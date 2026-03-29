@@ -1,0 +1,26 @@
+[project]
+name = "decras"
+version = "0.1.0"
+description = "Distributed Robotics POC — LLM + MCP + LeRobot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lerobot[feetech]>=0.4.4",
+    "mcp>=1.0.0",
+    "numpy",
+    "opencv-python-headless",
+    "requests",
+    "pybullet",
+    "placo",
+    "matplotlib>=3.10.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ROS launch_testing plugin conflicts with venv.
+# Run tests with: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest

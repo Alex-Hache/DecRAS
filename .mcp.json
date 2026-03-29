@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "decras": {
+      "command": "/home/alexandre/IA/DecRAS/.venv/bin/python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "/home/alexandre/IA/DecRAS",
+      "env": {
+        "SIMULATE": "false",
+        "LEROBOT_FOLLOWER_PORT": "/dev/decras_follower"
+      }
+    }
+  }
+}

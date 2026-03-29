@@ -1,0 +1,53 @@
+services:
+  # Ollama LLM server (GPU-accelerated)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Pull model on first start
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Model puller — ensures the model is available before controller starts
+  model-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen2.5:7b}"]
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    restart: "no"
+
+  # DecRAS controller (MCP server + LLM reasoning loop)
+  controller:
+    build: .
+    depends_on:
+      model-pull:
+        condition: service_completed_successfully
+    environment:
+      - SIMULATE=true
+      - DECRAS_GUI=false
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+      - LLM_BACKEND=ollama
+      - MAX_STEPS=${MAX_STEPS:-30}
+      - TASK=${TASK:-Pick up the red cup and place it on the blue plate.}
+    volumes:
+      - ./episodes:/app/episodes
+    command: ["python", "-m", "llm_controller", "${TASK:-Pick up the red cup and place it on the blue plate.}"]
+
+volumes:
+  ollama_data:

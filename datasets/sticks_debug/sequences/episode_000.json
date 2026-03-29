@@ -1,0 +1,80 @@
+{
+  "episode": 0,
+  "primitives": [
+    {
+      "primitive": "move_forward",
+      "distance_m": 0.1026
+    },
+    {
+      "primitive": "move_up",
+      "distance_m": 0.0533
+    },
+    {
+      "primitive": "move_left",
+      "distance_m": 0.0962
+    },
+    {
+      "primitive": "move_down",
+      "distance_m": 0.0391
+    },
+    {
+      "primitive": "move_back",
+      "distance_m": 0.023
+    },
+    {
+      "primitive": "move_forward",
+      "distance_m": 0.0291
+    },
+    {
+      "primitive": "grasp",
+      "force": 0.5
+    },
+    {
+      "primitive": "move_up",
+      "distance_m": 0.122
+    },
+    {
+      "primitive": "move_left",
+      "distance_m": 0.2528
+    },
+    {
+      "primitive": "move_back",
+      "distance_m": 0.0349
+    },
+    {
+      "primitive": "release"
+    },
+    {
+      "primitive": "move_up",
+      "distance_m": 0.0599
+    },
+    {
+      "primitive": "move_forward",
+      "distance_m": 0.0332
+    },
+    {
+      "primitive": "move_right",
+      "distance_m": 0.3412
+    },
+    {
+      "primitive": "move_down",
+      "distance_m": 0.0931
+    },
+    {
+      "primitive": "move_back",
+      "distance_m": 0.0272
+    },
+    {
+      "primitive": "move_forward",
+      "distance_m": 0.021
+    },
+    {
+      "primitive": "move_up",
+      "distance_m": 0.024
+    },
+    {
+      "primitive": "move_back",
+      "distance_m": 0.1074
+    }
+  ]
+}

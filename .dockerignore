@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+episodes/
+calibration.json
+*.egg-info/
+.pytest_cache/
+IMPLEMENTATION_PROMPT.md
