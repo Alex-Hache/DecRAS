@@ -20,7 +20,7 @@ on:
   workflow_dispatch:  # allows manual trigger for testing
 
 env:
-  PULSE_ISSUE_NUMBER: 2  # ← CHANGE THIS to your pinned issue number
+  PULSE_ISSUE_NUMBER: 3  # ← CHANGE THIS to your pinned issue number
 
 jobs:
   pulse:
