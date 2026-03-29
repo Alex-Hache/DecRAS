@@ -11,7 +11,76 @@
 
 ---
 
-## Phase 6 — Imitation Learning Pipeline (CURRENT)
+## Phase 5.5 — Fix Motion Control: Joint-Space Lookup (CURRENT — BLOCKER)
+
+> **Why this comes first**: The current IK (placo/PyBullet) produces wrong positions on
+> real hardware because the DH parameters don't match the 3D-printed arm geometry. Every
+> Cartesian primitive (move_left, move_forward, etc.) is unreliable. Phase 6 imitation
+> learning builds on these primitives — if they don't work, segmenter output is meaningless.
+> This must be fixed before anything else.
+
+### 5.5.1 Build Calibration Recording Script
+
+- [ ] **Create `calibration/record_grid.py`** — Interactive script: connects to leader+follower, prompts "move arm to position, press ENTER to record", reads joint angles via `robot.get_observation()`, accepts manual position input (x, y, z in meters via ruler), saves to `calibration/calibration_data.json`. Must support resuming (append to existing file) and display recorded count + workspace coverage.
+  - *Done when*: Script runs, records one point with position + joints, saves JSON
+  - *Time*: 30 min
+  - *Tag*: `claude-code` (scaffold), then `hardware` (test on robot)
+
+- [ ] **Record calibration grid** — Teleoperate arm to ~75 positions across workspace. X: 0.15–0.35m (5 pts), Y: ±0.15m (5 pts), Z: table to +0.15m (3 heights). Plus 5-10 extra at key locations (home, grasp height). Measure positions with ruler.
+  - *Done when*: `calibration_data.json` has 75+ entries with plausible positions
+  - *Time*: 45–60 min (one longer session)
+  - *Note*: `hardware` — this is the one session that can't be micro
+
+### 5.5.2 Build Joint Lookup
+
+- [ ] **Create `control/joint_lookup.py`** — Load calibration JSON, build KDTree from positions, implement `solve(target_xyz)` with KNN (K=6) + inverse-distance weighting. Add workspace bounds check: refuse targets >5cm from any recorded point. Add `get_workspace_bounds()` method.
+  - *Done when*: Unit test passes: `solve(recorded_point)` returns the recorded joints (± tolerance)
+  - *Time*: 30 min
+  - *Tag*: `claude-code`
+
+- [ ] **Add RBF interpolation option** — Optionally upgrade from KNN to `scipy.interpolate.RBFInterpolator` with thin_plate_spline kernel for smoother results. Keep KNN as fallback.
+  - *Done when*: Both interpolation modes work, can toggle via config
+  - *Time*: 20 min
+  - *Tag*: `claude-code`
+
+### 5.5.3 Build Trajectory Execution
+
+- [ ] **Create `control/trajectory.py`** — `minimum_jerk_joint_trajectory(q_start, q_end, duration, hz)` → (steps, num_joints) array. `compute_duration(q_start, q_end, speed)` with three presets: "slow" (near objects), "normal", "fast" (free space).
+  - *Done when*: Unit test: trajectory starts at q_start, ends at q_end, has zero velocity at endpoints
+  - *Time*: 20 min
+  - *Tag*: `claude-code`
+
+- [ ] **Create `control/executor.py`** — `TrajectoryExecutor` wrapping the robot. `execute(trajectory, gripper_value)` sends joints at 50Hz with timing control. Position history buffer for `go_back(steps)`.
+  - *Done when*: Can execute a min-jerk trajectory in simulation or dry-run mode
+  - *Time*: 30 min
+  - *Tag*: `claude-code`
+
+### 5.5.4 Wire Into MCP Server
+
+- [ ] **Replace IK path with lookup** — Update the MCP primitives (move_left, move_forward, etc.) to use `JointLookup.solve()` → `minimum_jerk_trajectory()` → `TrajectoryExecutor.execute()` instead of `kinematics.py` FK/IK. Keep `kinematics.py` for simulation fallback.
+  - *Done when*: `move_forward(0.05)` on real hardware actually moves forward 5cm (± 1cm)
+  - *Time*: 30 min
+  - *Note*: `hardware` — needs physical verification
+
+- [ ] **Build `calibration/validate_grid.py`** — Command arm to each recorded position sequentially, visually verify accuracy. Flag points with large errors for re-recording.
+  - *Done when*: Arm visits 10+ recorded points and they all look correct
+  - *Time*: 20 min
+  - *Tag*: `claude-code` (scaffold), then `hardware` (run on robot)
+
+### 5.5.5 Validate End-to-End
+
+- [ ] **Run a manual pick-and-place** — Using the new lookup-based primitives: move_forward → move_down → grasp → move_up → move_left → release. Does the arm actually do what the primitives say?
+  - *Done when*: You can pick up an object and place it somewhere else using MCP tool calls
+  - *Time*: 30 min
+  - *Note*: `hardware` — the real test
+
+---
+
+## Phase 6 — Imitation Learning Pipeline (BLOCKED ON 5.5)
+
+> **⚠ Do not start Phase 6 until Phase 5.5 is complete.** The segmenter decomposes
+> teleoperation into primitives. If those primitives don't execute correctly (because IK
+> is broken), the entire imitation learning pipeline produces garbage.
 
 ### 6.1 Validate Existing Tooling
 
@@ -29,7 +98,7 @@
 
 ### 6.2 Demo Storage & Retrieval
 
-- [ ] **Design demo store schema** — Decide: how do you store a decomposed demo? Proposal: one JSON file per episode, containing `{ task: str, primitives: [{ tool: str, args: dict, timestamp: float }], metadata: { dataset: str, episode: int } }`. Write this down as a docstring or small spec.
+- [x] **Design demo store schema** — Schema documented in `decras/imitation/retrieval.py` as `Demo`, `Primitive`, `DemoMetadata` dataclasses with full docstring.
   - *Done when*: Schema documented (even as a comment in code)
   - *Time*: 15 min
   - *Tag*: `claude-code` — Claude Code can scaffold this
@@ -95,8 +164,8 @@
 ## Architectural Debt (DO WHEN IT HURTS, NOT BEFORE)
 
 - [ ] Refactor `scripts/` into `decras/` library (see PROJECT_STATUS.md for planned structure)
-- [ ] Fix placo IK orientation preservation (wrist_flex drift during EE moves)
-- [ ] Add min-jerk interpolation to primitive execution (smoother trajectories)
+- [ ] Remove placo/PyBullet IK dependency once lookup table is proven stable
+- [ ] Upgrade calibration from ruler measurements to ArUco-based EE position measurement
 
 ---
 

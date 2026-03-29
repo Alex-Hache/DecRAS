@@ -37,7 +37,7 @@ interpretability (every decision is a tool call you can inspect), and data effic
          ▼
 ┌─────────────────────┐
 │   MCP Server        │  20 tools: move_*, grasp, release, observe, etc.
-│   (Executor)        │  Deterministic. FK/IK via placo + PyBullet headless.
+│   (Executor)        │  Deterministic. Data-driven joint-space lookup + min-jerk.
 └────────┬────────────┘
          │ joint commands
          ▼
@@ -132,6 +132,49 @@ we're researching — the planning/execution decomposition is. ArUco lets us sid
 vision uncertainty entirely for the PoC. The plan is to use a phone as camera via
 IP Webcam app, which avoids USB camera driver headaches on Linux.
 
+### 6. No IK — Data-Driven Joint-Space Lookup (CURRENT BLOCKER)
+
+**What**: Replace the placo/PyBullet IK solver with a lookup table built from real
+teleoperation data. Teleoperate the arm to a grid of ~75 positions across the workspace,
+record (Cartesian_position, joint_angles) pairs. For arbitrary targets, interpolate between
+nearest recorded neighbors using KNN + inverse-distance weighting (optionally scipy RBF).
+
+**Why**: The available IK solutions for SO-100/101 have inaccurate DH parameters — the
+arm moves to wrong positions. This is inherent to 3D-printed arms where the actual
+geometry doesn't match the URDF/DH model precisely. The lookup table bypasses this
+entirely: the mapping comes from the physical arm, not a kinematic model.
+
+**Status**: This is the current blocker. The existing 20 MCP primitives (move_left, etc.)
+use placo IK via `kinematics.py`, which produces incorrect positions on real hardware.
+Until the lookup table replaces this, Cartesian-space primitives are unreliable, and
+segmenter output from teleoperation data maps to primitives that don't execute correctly.
+
+**Control pipeline (target architecture)**:
+```
+MCP plan(skill="move_toward", target="cup")
+    → Resolve "cup" → Cartesian position from scene graph
+    → JointLookup.solve(target_xyz) → KDTree nearest neighbors
+                                    → inverse-distance interpolation
+                                    → target joint angles
+    → minimum_jerk_joint_trajectory(current, target, duration)
+    → TrajectoryExecutor: send joints at 50Hz via robot.send_action()
+```
+
+**Calibration grid spec**:
+- X: 0.15m–0.35m from base (5 points), Y: ±0.15m (5 points), Z: table to +0.15m (3 heights)
+- ~75 positions + 5-10 extra at key locations (home, grasp height)
+- Recording: teleoperate with leader arm, record follower joint angles
+- Position measurement: manual (ruler) initially, ArUco-based later
+- Safety: refuse targets more than ~5cm from any recorded point
+
+### 7. Minimum-Jerk Interpolation in Joint Space
+
+**What**: Deterministic, closed-form trajectory generation. 20 lines of code.
+`x(t) = x₀ + (x_f - x₀) × [10(t/T)³ - 15(t/T)⁴ + 6(t/T)⁵]`, applied per-joint.
+**Why**: Produces smooth trajectories from coarse waypoints. No learned trajectory
+generation needed. Combined with the lookup table, this gives reliable, smooth motion
+from any current position to any target in the recorded workspace.
+
 ---
 
 ## The Fundamental Tension: Abstraction Mismatch
@@ -170,7 +213,12 @@ Path A tries to resolve it (discover the right vocabulary from data).
 - **Robot**: SO-101 follower arm (Feetech servos), SO-100/101 leader for teleoperation
 - **Gripper convention**: 0 = CLOSED, 100 = OPEN (verified on hardware, was previously inverted)
 - **FK reference**: WORK_POSITION EE at ~[0.194, 0.050, 0.126]m
-- **Known IK issue**: placo IK changes wrist_flex during EE-space moves → small Z drop
-  when moving in X. Orientation not preserved. Not yet fixed.
+- **IK status**: BROKEN. placo IK uses inaccurate DH parameters → arm moves to wrong positions.
+  Additionally changes wrist_flex during EE-space moves → Z drop when moving in X.
+  Being replaced by data-driven joint-space lookup (see Decision #6).
+- **Motor units**: LeRobot uses raw Feetech STS3215 positions (range 0–4095). Lookup table
+  should use whatever units `robot.get_observation()` returns / `robot.send_action()` expects.
 - **Servo holding**: Under gravity, servos need active hold loops (repeated send_joint_positions)
 - **Ports**: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
+- **Camera**: Samsung A23 phone via IP Webcam app (MJPEG over WiFi), not yet set up physically.
+  Gooseneck mount needed (~€10). Placement: behind/above robot base, 45-60° down at workspace.

@@ -6,12 +6,12 @@ Algorithm:
   3. Divide trajectory into phases: approach, carry, retract
   4. Within each phase, greedily detect dominant-axis direction changes
      and emit one primitive per straight-line segment
-  5. Print + optionally save a JSON sequence of MCP calls
+  5. Output a Demo JSON matching the decras.imitation.retrieval schema
 
 Usage:
-    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1
-    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1 --episode 0
-    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1 --out sequences/
+    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1 --task "pick stick and place at target"
+    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1 --episode 0 --task "..."
+    uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1 --task "..." --out sequences/
 """
 
 import argparse
@@ -59,15 +59,16 @@ def _unwrap_scalar(val):
     return int(val)
 
 
-def compute_ee_trajectory(episode_df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
-    """FK over all frames → (N,3) EE positions in meters, (N,) gripper values."""
-    positions, grippers = [], []
+def compute_ee_trajectory(episode_df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """FK over all frames → (N,3) EE positions in meters, (N,) gripper values, (N,) timestamps."""
+    positions, grippers, timestamps = [], [], []
     for _, row in episode_df.iterrows():
         state = row["observation.state"]
         hw = {name: float(state[i]) for i, name in enumerate(_STATE_JOINT_ORDER)}
         positions.append(joints_to_cartesian(hw))
         grippers.append(float(state[_GRIPPER_INDEX]))
-    return np.array(positions), np.array(grippers)
+        timestamps.append(float(row["timestamp"]))
+    return np.array(positions), np.array(grippers), np.array(timestamps)
 
 
 # ---------------------------------------------------------------------------
@@ -87,50 +88,44 @@ def _find_gripper_events(gripper: np.ndarray) -> tuple[int | None, int | None]:
     threshold = gripper.min() + GRIPPER_THRESHOLD * (gripper.max() - gripper.min())
     grasp = release = None
     for i in range(1, len(smooth)):
-        # Grasp = gripper opens (UP-crossing): arm opens to grab object
         if smooth[i - 1] < threshold and smooth[i] >= threshold and grasp is None:
             grasp = i
-        # Release = gripper closes back (DOWN-crossing after grasp)
         if smooth[i - 1] >= threshold and smooth[i] < threshold and grasp is not None:
             release = i
             break
     return grasp, release
 
 
-def _segment_phase(ee: np.ndarray) -> list[dict]:
+def _segment_phase(ee: np.ndarray, offset: int = 0) -> list[dict]:
     """
-    Greedily segment a phase (sub-array of EE positions) into axis-aligned primitives.
-
-    Strategy:
-    - At each frame, compute instantaneous dominant axis (max abs velocity component)
-    - Accumulate displacement along that axis
-    - When dominant axis changes or sign flips, emit the accumulated primitive and reset
+    Greedily segment a phase into axis-aligned primitives.
+    Returns dicts with a temporary '_frame' key (absolute frame index) for timestamp resolution.
     """
     if len(ee) < 2:
         return []
 
     primitives = []
-    # Per-frame velocity (central differences, clipped at boundaries)
     vel = np.gradient(ee, axis=0)
-
-    # Running accumulator: total displacement per axis
     accum = np.zeros(3)
     prev_dominant = None
+    prim_start = offset
 
-    def _emit(accum: np.ndarray) -> list[dict]:
+    def _emit(accum: np.ndarray, start_frame: int) -> list[dict]:
         prims = []
         for axis in range(3):
             d = accum[axis]
             if abs(d) >= MIN_PRIM_DIST:
                 sign = +1 if d > 0 else -1
-                prim_name = _AXIS_NAMES[(axis, sign)]
-                prims.append({"primitive": prim_name, "distance_m": round(abs(d), 4)})
+                prims.append({
+                    "tool": _AXIS_NAMES[(axis, sign)],
+                    "args": {"distance_m": round(abs(d), 4)},
+                    "_frame": start_frame,
+                })
         return prims
 
     for i in range(len(vel)):
         speed = np.abs(vel[i])
         if speed.max() < VELOCITY_MIN:
-            # Still frame — accumulate zero but don't change dominant
             continue
 
         dominant = int(np.argmax(speed))
@@ -138,43 +133,45 @@ def _segment_phase(ee: np.ndarray) -> list[dict]:
 
         if prev_dominant is None:
             prev_dominant = (dominant, sign)
+            prim_start = offset + i
 
         if (dominant, sign) != prev_dominant:
-            # Direction changed — emit accumulated primitive(s) and reset
-            primitives.extend(_emit(accum))
+            primitives.extend(_emit(accum, prim_start))
             accum = np.zeros(3)
             prev_dominant = (dominant, sign)
+            prim_start = offset + i
 
         accum[dominant] += vel[i, dominant]
 
-    # Emit any remaining
-    primitives.extend(_emit(accum))
+    primitives.extend(_emit(accum, prim_start))
     return primitives
 
 
 def _merge_primitives(primitives: list[dict]) -> list[dict]:
-    """Merge consecutive same-axis primitives and drop sub-threshold moves."""
+    """Merge consecutive same-tool primitives and drop sub-threshold moves."""
     MERGE_MIN = 0.015  # m — drop any primitive below this after merging
 
     merged = []
     for p in primitives:
-        if "distance_m" not in p:
+        if "distance_m" not in p.get("args", {}):
             merged.append(p)
             continue
-        if merged and merged[-1].get("primitive") == p["primitive"]:
-            merged[-1] = {**merged[-1], "distance_m": round(merged[-1]["distance_m"] + p["distance_m"], 4)}
+        if merged and merged[-1].get("tool") == p["tool"]:
+            merged[-1] = {
+                **merged[-1],
+                "args": {"distance_m": round(merged[-1]["args"]["distance_m"] + p["args"]["distance_m"], 4)},
+            }
         else:
             merged.append(dict(p))
 
-    return [p for p in merged if "distance_m" not in p or p["distance_m"] >= MERGE_MIN]
+    return [p for p in merged if "distance_m" not in p.get("args", {}) or p["args"]["distance_m"] >= MERGE_MIN]
 
 
-def segment_episode(ee: np.ndarray, gripper: np.ndarray) -> list[dict]:
-    """Full episode → list of MCP primitive dicts."""
+def segment_episode(ee: np.ndarray, gripper: np.ndarray, timestamps: np.ndarray) -> list[dict]:
+    """Full episode → list of primitive dicts matching the Demo schema (tool, args, timestamp)."""
     smooth_ee = _smooth(ee, SMOOTH_K)
     grasp_f, release_f = _find_gripper_events(gripper)
 
-    # Fallback: split at 1/3 and 2/3 if gripper events not detected
     if grasp_f is None:
         grasp_f = len(ee) // 3
         print("  Warning: grasp event not detected — using frame 1/3 as fallback")
@@ -189,13 +186,21 @@ def segment_episode(ee: np.ndarray, gripper: np.ndarray) -> list[dict]:
     retract  = smooth_ee[release_f:]
 
     primitives: list[dict] = []
-    primitives.extend(_segment_phase(approach))
-    primitives.append({"primitive": "grasp", "force": 0.5})
-    primitives.extend(_segment_phase(carry))
-    primitives.append({"primitive": "release"})
-    primitives.extend(_segment_phase(retract))
+    primitives.extend(_segment_phase(approach, offset=0))
+    primitives.append({"tool": "grasp",   "args": {"force": 0.5}, "_frame": grasp_f})
+    primitives.extend(_segment_phase(carry, offset=grasp_f))
+    primitives.append({"tool": "release", "args": {},              "_frame": release_f})
+    primitives.extend(_segment_phase(retract, offset=release_f))
 
-    return _merge_primitives(primitives)
+    merged = _merge_primitives(primitives)
+
+    # Resolve frame indices → wall-clock timestamps relative to episode start
+    t0 = float(timestamps[0])
+    for p in merged:
+        frame = p.pop("_frame", 0)
+        p["timestamp"] = round(float(timestamps[min(frame, len(timestamps) - 1)]) - t0, 4)
+
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +210,13 @@ def segment_episode(ee: np.ndarray, gripper: np.ndarray) -> list[dict]:
 def main():
     parser = argparse.ArgumentParser(description="Segment teleop episode into MCP primitive sequence")
     parser.add_argument("--dataset", required=True, help="Path to dataset root")
+    parser.add_argument("--task", default="", help="Task description for the demo store (e.g. 'pick stick and place at target')")
     parser.add_argument("--episode", type=int, default=None, help="Episode index (default: all)")
     parser.add_argument("--out", default=None, help="Directory to save JSON sequences")
     args = parser.parse_args()
 
     dataset_root = Path(args.dataset)
+    dataset_name = dataset_root.name
     out_dir = Path(args.out) if args.out else None
     if out_dir:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -228,27 +235,31 @@ def main():
         ep_df = df[df["_ep"] == ep_num].reset_index(drop=True)
         print(f"\nEpisode {ep_num} ({len(ep_df)} frames) — running FK...")
 
-        ee, gripper = compute_ee_trajectory(ep_df)
-        primitives = segment_episode(ee, gripper)
+        ee, gripper, timestamps = compute_ee_trajectory(ep_df)
+        primitives = segment_episode(ee, gripper, timestamps)
 
-        start_position = {"x": round(float(ee[0, 0]), 4), "y": round(float(ee[0, 1]), 4), "z": round(float(ee[0, 2]), 4)}
-        sequence = {"episode": int(ep_num), "start_ee_position": start_position, "primitives": primitives}
-        results[ep_num] = sequence
+        demo = {
+            "task": args.task,
+            "primitives": primitives,
+            "metadata": {
+                "dataset": dataset_name,
+                "episode": int(ep_num),
+                "start_ee_position": {"x": round(float(ee[0, 0]), 4), "y": round(float(ee[0, 1]), 4), "z": round(float(ee[0, 2]), 4)},
+            },
+        }
+        results[ep_num] = demo
 
-        print(f"  Start EE: {start_position}")
         print(f"  → {len(primitives)} primitives:")
         for p in primitives:
-            if "distance_m" in p:
-                print(f"      {p['primitive']}({p['distance_m']:.4f} m)")
+            if "distance_m" in p.get("args", {}):
+                print(f"      {p['tool']}({p['args']['distance_m']:.4f} m)  t={p['timestamp']:.2f}s")
             else:
-                print(f"      {p['primitive']}()")
+                print(f"      {p['tool']}()  t={p['timestamp']:.2f}s")
 
-        # Always save next to the dataset
-        default_out = dataset_root / "sequences"
-        save_dir = out_dir or default_out
+        save_dir = out_dir or (dataset_root / "sequences")
         save_dir.mkdir(parents=True, exist_ok=True)
         out_file = save_dir / f"episode_{int(ep_num):03d}.json"
-        out_file.write_text(json.dumps(sequence, indent=2))
+        out_file.write_text(json.dumps(demo, indent=2))
         print(f"  Saved → {out_file}")
 
     print("\n--- Full JSON output ---")

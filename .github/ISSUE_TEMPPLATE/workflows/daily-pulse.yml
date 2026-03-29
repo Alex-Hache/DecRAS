@@ -1,0 +1,64 @@
+# .github/workflows/daily-pulse.yml
+#
+# Runs every evening at 7pm Brussels time (6pm UTC in winter, 5pm UTC in summer).
+# Reads BACKLOG.md, generates a status summary, and posts it as a comment
+# on the pinned "Project Pulse" issue.
+#
+# Setup required:
+#   1. Push this file to .github/workflows/daily-pulse.yml
+#   2. Create an issue titled "🚀 Project Pulse" in your repo
+#   3. Pin that issue
+#   4. Put the issue number in the PULSE_ISSUE_NUMBER env var below
+
+name: Daily Pulse
+
+on:
+  schedule:
+    # 5pm UTC = 7pm Brussels (CEST, summer time)
+    # Adjust to 6pm UTC in winter if you want, or just leave it — 1hr off is fine
+    - cron: '0 17 * * *'
+  workflow_dispatch:  # allows manual trigger for testing
+
+env:
+  PULSE_ISSUE_NUMBER: 2  # ← CHANGE THIS to your pinned issue number
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate pulse
+        id: pulse
+        run: |
+          # Generate the pulse comment
+          python scripts/daily_pulse.py > pulse_output.md
+          
+          # Store as output (handle multiline)
+          echo "comment<<EOF" >> $GITHUB_OUTPUT
+          cat pulse_output.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post comment on pulse issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('pulse_output.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ env.PULSE_ISSUE_NUMBER }},
+              body: body
+            });

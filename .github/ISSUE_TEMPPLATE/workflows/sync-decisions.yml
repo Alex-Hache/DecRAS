@@ -1,0 +1,81 @@
+# .github/workflows/sync-decisions.yml
+#
+# Triggers when an issue with the "sync" label is created.
+# Takes the issue body and appends it to DECISIONS.md, then closes the issue.
+#
+# Usage:
+#   1. At the end of a claude.ai conversation, Claude gives you a decision block
+#   2. Create a GitHub Issue (from phone app: your repo → Issues → New Issue)
+#   3. Title: "Sync: [short description]"
+#   4. Body: paste the decision block Claude gave you
+#   5. Add the label "sync" (create this label once: yellow color, "sync" name)
+#   6. Submit → this Action runs automatically
+
+name: Sync Decisions
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  sync:
+    # Only run when the "sync" label is added
+    if: github.event.label.name == 'sync'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Append decision to DECISIONS.md
+        run: |
+          # Create DECISIONS.md if it doesn't exist
+          if [ ! -f DECISIONS.md ]; then
+            echo "# DecRAS — Decision Log" > DECISIONS.md
+            echo "" >> DECISIONS.md
+            echo "> Append-only log of architectural decisions made in claude.ai conversations." >> DECISIONS.md
+            echo "> Claude Code reads this file for context. Do not edit manually." >> DECISIONS.md
+            echo "" >> DECISIONS.md
+            echo "---" >> DECISIONS.md
+            echo "" >> DECISIONS.md
+          fi
+          
+          # Append the issue body
+          cat >> DECISIONS.md << 'ISSUE_BODY_END'
+          
+          ${{ github.event.issue.body }}
+          
+          ---
+          
+          ISSUE_BODY_END
+
+      - name: Commit and push
+        run: |
+          git config user.name "DecRAS Bot"
+          git config user.email "decras-bot@users.noreply.github.com"
+          git add DECISIONS.md
+          git commit -m "sync: ${{ github.event.issue.title }}"
+          git push
+
+      - name: Close the issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ Decision synced to `DECISIONS.md` and committed. Issue auto-closed.'
+            });

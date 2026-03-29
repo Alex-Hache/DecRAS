@@ -60,18 +60,31 @@ tests/                   — pytest test suite (55 tests)
 scripts/
   test_hardware.py       — Interactive hardware test
   test_mcp.py            — Direct MCP primitives test
-  calibrate.py           — Camera-to-robot calibration
+  calibrate.py           — Camera-to-robot calibration (camera_to_robot_matrix → calibration.json)
   calibrate_leader.py    — Leader arm motor calibration (saves decras_leader.json)
   replay.py              — Legacy JSON episode viewer (LLM traces)
   record_teleop.py       — Teleoperation recording → LeRobotDataset
   replay_teleop.py       — Replay recorded episode on follower hardware
+  visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors
+  segment_trajectory.py  — Greedy dominant-axis segmenter → MCP primitive sequence JSON
+
+decras/
+  imitation/
+    retrieval.py         — Demo store schema (Demo, Primitive, DemoMetadata dataclasses)
+
+datasets/
+  sticks_v1/             — 5 teleop episodes, task: "pick stick and place at target"
+  sticks_v2/             — 1 teleop episode, task: "pick stick and place at target"
+                           sequences/episode_000.json — segmenter output (already run)
+  sticks_debug/          — 1 teleop episode (debug recording)
+                           sequences/episode_000.json — segmenter output (already run)
 
 .mcp.json                — Claude Code MCP server config (sg dialout wrapper)
 ```
 
 ### Known Limitations
 
-- placo IK changes wrist_flex during EE-space moves (not orientation-preserving) — small Z drop observed when moving in X. Not yet fixed.
+- **placo IK broken on hardware** — DH parameters don't match the 3D-printed arm geometry → primitives move to wrong positions. Additionally, IK changes wrist_flex during EE-space moves → Z drop when moving in X. **Being replaced by data-driven joint-space lookup (Phase 5.5 — current blocker).**
 - Camera/perception pipeline not tested on real hardware yet
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
@@ -123,7 +136,18 @@ All 8 motion primitives hardware-validated (March 2026):
 
 ## Next Steps
 
-### Phase 6 — Imitation Learning Pipeline
+### Phase 5.5 — Fix Motion Control: Joint-Space Lookup (CURRENT BLOCKER)
+
+placo IK produces wrong positions on real hardware (inaccurate DH params). Replacing with:
+1. `calibration/record_grid.py` — record (xyz, joints) pairs by teleoperating to a grid of ~75 positions
+2. `control/joint_lookup.py` — KDTree KNN + inverse-distance weighting; refuses out-of-bounds targets
+3. `control/trajectory.py` — minimum-jerk joint-space interpolation (closed-form, 20 lines)
+4. `control/executor.py` — sends trajectory at 50Hz via robot.send_action()
+5. Wire into MCP server primitives; keep kinematics.py for simulation fallback only
+
+**Phase 6 is blocked on this.** Segmenter output is meaningless until primitives execute correctly.
+
+### Phase 6 — Imitation Learning Pipeline (BLOCKED ON 5.5)
 
 **Teleoperation recording (DONE)**:
 - `scripts/record_teleop.py` — wires LeRobot's `SOFollower` + `SOLeader` + `LeRobotDataset`
@@ -136,11 +160,14 @@ All 8 motion primitives hardware-validated (March 2026):
 - `scripts/visualize_trajectory.py` — FK over all Parquet frames → 3D matplotlib EE path, one color per episode, grasp/release markers
 - `scripts/segment_trajectory.py` — greedy dominant-axis segmenter → list of MCP primitive calls; detects gripper events (grasp/release) to split phases; outputs JSON
 
-**Next session**:
-- Run visualizer on sticks_v1 dataset and sanity-check FK positions
-- Tune segmenter thresholds (SMOOTH_K, MIN_PRIM_DIST) until primitive sequences look sensible
-- Store decomposed demos as tool-call sequences in a retrieval store
-- RAG: given a new task description, retrieve similar demo sequences as context
+**Demo store schema (DONE)**:
+- `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
+- JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
+
+**Next (after Phase 5.5)**:
+- Build demo store writer: segmenter JSON + task string → Demo JSON on disk
+- Build demo retriever: TF-IDF/sentence-transformer cosine similarity on task descriptions
+- RAG: inject retrieved demo sequences into LLM system prompt as few-shot examples
 - Fine-tune LLM on (task description → tool call sequence) pairs from demo data
 
 ### Phase 7 — Memory & Context

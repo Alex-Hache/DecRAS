@@ -46,3 +46,8 @@ feat: add demo store schema (BACKLOG 6.2.1)
 ```
 
 This keeps the project docs always in sync with the code. No separate "update docs" step needed.
+
+
+## Context from conversations
+Read DECISIONS.md before starting any task. It contains architectural decisions made in claude.ai conversations that may not yet be reflected in ARCHITECTURE.md or BACKLOG.md. If a decision in DECISIONS.md conflicts with another doc, DECISIONS.md is more recent and takes precedence.
+
