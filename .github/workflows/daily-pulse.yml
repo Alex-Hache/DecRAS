@@ -60,5 +60,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ env.PULSE_ISSUE_NUMBER }},
-              body: body
+              body: `@Alex-Hache 👋\n\n${body}`
             });
