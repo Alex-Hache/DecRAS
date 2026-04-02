@@ -34,3 +34,57 @@
 - Daily pulse via scripts/daily_pulse.py (GitHub Actions when billing unlocked)
 
 ---
+
+Stratégie Compétences & Positionnement — Avril 2026
+Constat de départ
+Profil actuel : AI Engineer en poste (vision, LLM, RAG, Graph RAG, MCP servers, embeddings)
+Problème : ce profil se commoditise rapidement. L'AI Engineer généraliste de 2024 sera le web dev de 2026.
+Objectif : anticiper à 2 ans, trouver un positionnement différenciant.
+Hypothèse initiale
+Se spécialiser en IA embodied/embedded (ex : streaming JEPA sur mobile).
+Analyse
+Ce qui se commoditise vite
+Intégration LLM, RAG, prompt engineering, fine-tuning standard
+Orchestration d'agents basique
+Les outils comme Claude Code rendent ça accessible aux non-spécialistes
+Ce qui reste dur à commoditiser
+Compétences qui touchent au physique : latence real-time, bruit capteur, sécurité, edge cases physiques
+Maths et théorie derrière les architectures : Koopman, JEPA, contrôle différentiable — concevoir les outils, pas les utiliser
+Pensée système sur problèmes ambigus : savoir quoi construire, pas juste comment
+Marché belge
+Demande réelle en robotique/embedded : ART Robotics (Herent), Mantis Robotics (Leuven), IMEC, Space Applications Services, Toyota Zaventem
+UHasselt recrute en "cyber-physical intelligence" (embedded/edge AI, contrôle sécurisé, HW-SW co-design)
+Écosystème plus petit que le pur software mais moins saturé
+Positionnement retenu
+"AI × Systèmes Cyber-Physiques" — le profil qui sait déployer de l'intelligence (world models, perception, planification) sur des systèmes contraints interagissant avec le monde réel.
+Différenciateur clé vs ingénieur embedded classique : compréhension des world models, architectures JEPA, alignment latent. La combinaison embedded + ML théorique est rare.
+Compétences à empiler
+Immédiat (0-6 mois)
+Finaliser le POC DecRAS en Python (architecture + interfaces validées)
+Bases C++ suffisantes pour ne pas être bloqué sur opportunités
+ONNX Runtime / TFLite pour inférence edge
+ROS2 (bases déjà acquises)
+Moyen terme (6-18 mois)
+Rust comme langage cible post-POC (refactor bloc par bloc)
+Écosystème ML Rust : burn, ort (ONNX), candle (HuggingFace)
+Bindings ROS2 Rust (r2r, ros2_rust)
+En attendant le refactor : petits outils CLI perso en Rust pour construire le muscle
+Contrôle en boucle fermée (atout existant via travail Koopman)
+Safety/certification (ISO 26262, IEC 61508) — rend le profil rare
+MLOps pour systèmes embarqués (monitoring de drift sur edge)
+Séquence décidée
+POC Python d'abord — valider l'architecture et les blocs DecRAS
+Refactor Rust ensuite — bloc par bloc, une fois les interfaces stabilisées
+Ne pas optimiser prématurément
+DecRAS comme vitrine
+Cadrer le projet non pas comme "hobby robotique" mais comme démonstration de compétences systèmes :
+"Architecte d'un système multi-agents avec planification LLM, perception temps réel et contrôle de bras robotique sous contraintes edge"
+Pari Rust — risques et timing
+Pour : profil Rust + IA embarquée quasi inexistant, avance sur une vague
+Contre : le marché belge recrute en C++ aujourd'hui, Rust robotique encore marginal
+Mitigation : passer de Rust à C++ est facile, l'inverse non
+Horizon : pari à 2-3 ans, pas 6 mois
+Discussion du 2 avril 2026
+
+---
+
