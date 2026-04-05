@@ -33,39 +33,38 @@
 
 ### 5.5.2 Build Joint Lookup
 
-- [ ] **Create `control/joint_lookup.py`** — Load calibration JSON, build KDTree from positions, implement `solve(target_xyz)` with KNN (K=6) + inverse-distance weighting. Add workspace bounds check: refuse targets >5cm from any recorded point. Add `get_workspace_bounds()` method.
+- [x] **Create `control/joint_lookup.py`** — Load calibration JSON, build KDTree from positions, implement `solve(target_xyz)` with KNN (K=6) + inverse-distance weighting. Add workspace bounds check: refuse targets >5cm from any recorded point. Add `get_workspace_bounds()` method.
   - *Done when*: Unit test passes: `solve(recorded_point)` returns the recorded joints (± tolerance)
   - *Time*: 30 min
   - *Tag*: `claude-code`
 
-- [ ] **Add RBF interpolation option** — Optionally upgrade from KNN to `scipy.interpolate.RBFInterpolator` with thin_plate_spline kernel for smoother results. Keep KNN as fallback.
+- [x] **Add RBF interpolation option** — Optionally upgrade from KNN to `scipy.interpolate.RBFInterpolator` with thin_plate_spline kernel for smoother results. Keep KNN as fallback.
   - *Done when*: Both interpolation modes work, can toggle via config
   - *Time*: 20 min
   - *Tag*: `claude-code`
 
 ### 5.5.3 Build Trajectory Execution
 
-- [ ] **Create `control/trajectory.py`** — `minimum_jerk_joint_trajectory(q_start, q_end, duration, hz)` → (steps, num_joints) array. `compute_duration(q_start, q_end, speed)` with three presets: "slow" (near objects), "normal", "fast" (free space).
+- [x] **Create `control/trajectory.py`** — `minimum_jerk_joint_trajectory(q_start, q_end, duration, hz)` → (steps, num_joints) array. `compute_duration(q_start, q_end, speed)` with three presets: "slow" (near objects), "normal", "fast" (free space).
   - *Done when*: Unit test: trajectory starts at q_start, ends at q_end, has zero velocity at endpoints
   - *Time*: 20 min
   - *Tag*: `claude-code`
 
-- [ ] **Create `control/executor.py`** — `TrajectoryExecutor` wrapping the robot. `execute(trajectory, gripper_value)` sends joints at 50Hz with timing control. Position history buffer for `go_back(steps)`.
+- [x] **Create `control/executor.py`** — `TrajectoryExecutor` wrapping the robot. `execute(trajectory, gripper_value)` sends joints at 50Hz with timing control. Position history buffer for `go_back(steps)`.
   - *Done when*: Can execute a min-jerk trajectory in simulation or dry-run mode
   - *Time*: 30 min
   - *Tag*: `claude-code`
 
 ### 5.5.4 Wire Into MCP Server
 
-- [ ] **Replace IK path with lookup** — Update the MCP primitives (move_left, move_forward, etc.) to use `JointLookup.solve()` → `minimum_jerk_trajectory()` → `TrajectoryExecutor.execute()` instead of `kinematics.py` FK/IK. Keep `kinematics.py` for simulation fallback.
+- [x] **Replace IK path with lookup** — Updated `lerobot.py` `move_to()` to call `JointLookup.solve()` → `minimum_jerk_trajectory()` → `TrajectoryExecutor.execute()`. Falls back to placo IK when calibration data is not available. Keeps `kinematics.py` for simulation.
   - *Done when*: `move_forward(0.05)` on real hardware actually moves forward 5cm (± 1cm)
-  - *Time*: 30 min
-  - *Note*: `hardware` — needs physical verification
+  - *Note*: Code change done (`claude-code`). Physical verification (`hardware`) still pending — needs calibration data to be recorded first.
 
-- [ ] **Build `calibration/validate_grid.py`** — Command arm to each recorded position sequentially, visually verify accuracy. Flag points with large errors for re-recording.
+- [x] **Build `calibration/validate_grid.py`** — Command arm to each recorded position sequentially, visually verify accuracy. Flag points with large errors for re-recording.
   - *Done when*: Arm visits 10+ recorded points and they all look correct
   - *Time*: 20 min
-  - *Tag*: `claude-code` (scaffold), then `hardware` (run on robot)
+  - *Tag*: `claude-code` (scaffold done), then `hardware` (run on robot)
 
 ### 5.5.5 Validate End-to-End
 

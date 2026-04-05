@@ -198,8 +198,43 @@ class LeRobotInterface:
             logger.warning("FK failed: %s — returning cached position", e)
             return self._position[:]
 
+    def _solve_joints_for_target(
+        self,
+        x: float,
+        y: float,
+        z: float,
+        current: "dict[str, float]",
+    ) -> "dict[str, float]":
+        """Resolve joint angles for a Cartesian target.
+
+        Tries the data-driven joint lookup table first.  Falls back to
+        placo/PyBullet IK when calibration data is unavailable.
+        """
+        # Try lookup table (real hardware path)
+        try:
+            from control.joint_lookup import JointLookup
+            lookup = JointLookup()
+            joint_targets = lookup.solve([x, y, z])
+            logger.debug("IK via lookup table for (%.3f, %.3f, %.3f)", x, y, z)
+            return joint_targets
+        except FileNotFoundError:
+            logger.debug(
+                "Calibration data not found — falling back to placo IK for (%.3f, %.3f, %.3f)",
+                x, y, z,
+            )
+        except ValueError as e:
+            logger.debug("Lookup refused target: %s — falling back to placo IK", e)
+
+        # Fallback: placo IK (simulation or pre-calibration use)
+        from mcp_server.robot.kinematics import cartesian_to_joints
+        return cartesian_to_joints(x, y, z, seed_hw_joints=current)
+
     def move_to(self, x: float, y: float, z: float, velocity: str = "normal") -> dict:
-        """Move end-effector to Cartesian position via IK.
+        """Move end-effector to Cartesian position.
+
+        Uses the joint-space lookup table on real hardware (when calibration
+        data is available) and sends a minimum-jerk trajectory at 50 Hz.
+        Falls back to placo IK when calibration data is not yet recorded.
 
         Args:
             x, y, z: Target in robot base frame (meters).
@@ -216,20 +251,34 @@ class LeRobotInterface:
             return {"status": "complete", "final_position": self._position[:]}
 
         try:
-            from mcp_server.robot.kinematics import cartesian_to_joints
             current = self.get_joint_positions()
-            joint_targets = cartesian_to_joints(x, y, z, seed_hw_joints=current)
+            joint_targets = self._solve_joints_for_target(x, y, z, current)
             joint_targets["gripper"] = current.get("gripper", GRIPPER_OPEN)
 
-            steps = {"slow": 20, "normal": 10, "fast": 5}.get(velocity, 10)
-            for i in range(1, steps + 1):
-                alpha = i / steps
-                interp = {
-                    name: current.get(name, 0.0) + alpha * (joint_targets[name] - current.get(name, 0.0))
-                    for name in JOINT_NAMES
-                }
-                self.send_joint_positions(interp)
-                time.sleep(0.02)
+            # Build and execute a minimum-jerk trajectory at 50 Hz
+            try:
+                from control.trajectory import minimum_jerk_joint_trajectory, compute_duration
+                from control.executor import TrajectoryExecutor
+
+                q_start = {k: current.get(k, 0.0) for k in ARM_JOINT_NAMES}
+                q_end = {k: joint_targets.get(k, 0.0) for k in ARM_JOINT_NAMES}
+                duration = compute_duration(q_start, q_end, speed=velocity)
+                traj = minimum_jerk_joint_trajectory(q_start, q_end, duration)
+                executor = TrajectoryExecutor(robot=self)
+                result = executor.execute(traj, gripper_value=joint_targets["gripper"])
+                if result.get("status") != "complete":
+                    raise RuntimeError(result.get("reason", "executor failed"))
+            except ImportError:
+                # control module not yet available — fall back to linear interpolation
+                steps = {"slow": 20, "normal": 10, "fast": 5}.get(velocity, 10)
+                for i in range(1, steps + 1):
+                    alpha = i / steps
+                    interp = {
+                        name: current.get(name, 0.0) + alpha * (joint_targets[name] - current.get(name, 0.0))
+                        for name in JOINT_NAMES
+                    }
+                    self.send_joint_positions(interp)
+                    time.sleep(0.02)
 
             self._position = [x, y, z]
             self._last_action = "move_to"

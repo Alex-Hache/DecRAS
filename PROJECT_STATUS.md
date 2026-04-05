@@ -46,7 +46,7 @@ llm_controller/
   config.py              — LLM settings
   mcp_client.py          — MCP stdio client
 
-tests/                   — pytest test suite (55 tests)
+tests/                   — pytest test suite (110 tests)
   test_config.py         — Config validation
   test_history.py        — Position history buffer
   test_episode.py        — Episode recording
@@ -57,6 +57,9 @@ tests/                   — pytest test suite (55 tests)
   test_interaction_log.py — Interaction logging
   test_sim.py            — PyBullet simulation (pick-and-place)
   test_record_grid.py    — Calibration grid recorder (save/load, coverage, grid spec)
+  test_joint_lookup.py   — JointLookup: load, KNN/RBF solve, workspace bounds, out-of-bounds rejection
+  test_trajectory.py     — minimum_jerk_profile, minimum_jerk_joint_trajectory, compute_duration
+  test_executor.py       — TrajectoryExecutor: dry-run, mock robot, history, go_back, timing
 
 scripts/
   test_hardware.py       — Interactive hardware test
@@ -71,6 +74,13 @@ scripts/
 
 calibration/
   record_grid.py         — Interactive calibration grid recorder (leader+follower teleop, manual xyz input, resume support)
+  validate_grid.py       — Hardware validation scaffold: commands arm to each recorded position, collects pass/fail verdicts
+
+control/
+  __init__.py
+  joint_lookup.py        — KDTree + KNN + inverse-distance weighting; optional RBFInterpolator; workspace bounds check
+  trajectory.py          — minimum_jerk_joint_trajectory() (5th-order poly); compute_duration() with slow/normal/fast presets
+  executor.py            — TrajectoryExecutor: sends trajectory at 50 Hz with timing control; go_back() history buffer
 
 decras/
   imitation/
@@ -144,10 +154,13 @@ All 8 motion primitives hardware-validated (March 2026):
 
 placo IK produces wrong positions on real hardware (inaccurate DH params). Replacing with:
 1. `calibration/record_grid.py` — record (xyz, joints) pairs by teleoperating to a grid of ~75 positions **(DONE — scaffold)**
-2. `control/joint_lookup.py` — KDTree KNN + inverse-distance weighting; refuses out-of-bounds targets
-3. `control/trajectory.py` — minimum-jerk joint-space interpolation (closed-form, 20 lines)
-4. `control/executor.py` — sends trajectory at 50Hz via robot.send_action()
-5. Wire into MCP server primitives; keep kinematics.py for simulation fallback only
+2. `control/joint_lookup.py` — KDTree KNN + inverse-distance weighting; refuses out-of-bounds targets **(DONE)**
+3. `control/trajectory.py` — minimum-jerk joint-space interpolation (5th-order polynomial) **(DONE)**
+4. `control/executor.py` — sends trajectory at 50Hz via robot.send_action(); go_back() history **(DONE)**
+5. Wire into MCP server primitives; keep kinematics.py for simulation fallback only **(DONE — code; hardware validation pending)**
+6. `calibration/validate_grid.py` — scaffold to verify recorded positions on hardware **(DONE — scaffold)**
+
+**Remaining hardware steps**: record calibration grid (~75 points), run validate_grid.py, confirm move_forward(0.05) accuracy.
 
 **Phase 6 is blocked on this.** Segmenter output is meaningless until primitives execute correctly.
 
