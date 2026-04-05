@@ -21,7 +21,7 @@
 
 ### 5.5.1 Build Calibration Recording Script
 
-- [ ] **Create `calibration/record_grid.py`** — Interactive script: connects to leader+follower, prompts "move arm to position, press ENTER to record", reads joint angles via `robot.get_observation()`, accepts manual position input (x, y, z in meters via ruler), saves to `calibration/calibration_data.json`. Must support resuming (append to existing file) and display recorded count + workspace coverage.
+- [x] **Create `calibration/record_grid.py`** — Interactive script: connects to leader+follower, prompts "move arm to position, press ENTER to record", reads joint angles via `robot.get_observation()`, accepts manual position input (x, y, z in meters via ruler), saves to `calibration/calibration_data.json`. Must support resuming (append to existing file) and display recorded count + workspace coverage.
   - *Done when*: Script runs, records one point with position + joints, saves JSON
   - *Time*: 30 min
   - *Tag*: `claude-code` (scaffold), then `hardware` (test on robot)

@@ -56,6 +56,7 @@ tests/                   — pytest test suite (55 tests)
   test_server_tools.py   — MCP server tool functions
   test_interaction_log.py — Interaction logging
   test_sim.py            — PyBullet simulation (pick-and-place)
+  test_record_grid.py    — Calibration grid recorder (save/load, coverage, grid spec)
 
 scripts/
   test_hardware.py       — Interactive hardware test
@@ -67,6 +68,9 @@ scripts/
   replay_teleop.py       — Replay recorded episode on follower hardware
   visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors
   segment_trajectory.py  — Greedy dominant-axis segmenter → MCP primitive sequence JSON
+
+calibration/
+  record_grid.py         — Interactive calibration grid recorder (leader+follower teleop, manual xyz input, resume support)
 
 decras/
   imitation/
@@ -139,7 +143,7 @@ All 8 motion primitives hardware-validated (March 2026):
 ### Phase 5.5 — Fix Motion Control: Joint-Space Lookup (CURRENT BLOCKER)
 
 placo IK produces wrong positions on real hardware (inaccurate DH params). Replacing with:
-1. `calibration/record_grid.py` — record (xyz, joints) pairs by teleoperating to a grid of ~75 positions
+1. `calibration/record_grid.py` — record (xyz, joints) pairs by teleoperating to a grid of ~75 positions **(DONE — scaffold)**
 2. `control/joint_lookup.py` — KDTree KNN + inverse-distance weighting; refuses out-of-bounds targets
 3. `control/trajectory.py` — minimum-jerk joint-space interpolation (closed-form, 20 lines)
 4. `control/executor.py` — sends trajectory at 50Hz via robot.send_action()
