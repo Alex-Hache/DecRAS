@@ -88,3 +88,15 @@ Discussion du 2 avril 2026
 
 ---
 
+
+We need to take a step back and update the plans and decisions. The idea is to make a very simple simple stuff first.
+1. Code by hand the SO-101 class
+2. Find the URDF of SO-101
+3. Put it into Mujoco
+4. Visualize where is the origin.
+5. Fix FK
+6. Verify IK(FK) = ID (approx)
+7. Valider les différentes directions cartesiennes.
+
+---
+
