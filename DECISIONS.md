@@ -54,20 +54,15 @@
 
 ---
 
-## 2026-04-08 — FK Bug Found: `.pos` Suffix Mismatch in kinematics.py
+## 2026-04-12 — Phase 5.5 Skipped: FK/IK Good Enough
 
-**Decision**: Fix `joints_to_cartesian()` and `cartesian_to_joints()` to accept both `"shoulder_pan"` and `"shoulder_pan.pos"` key formats.
+**Decision**: Skip Phase 5.5 (Joint-Space Lookup Table) entirely. Proceed directly to Phase 6.
 
-**Reason**: LeRobot's `robot.get_observation()` returns keys with `.pos` suffix (e.g. `"shoulder_pan.pos": -14.4`). The FK/IK functions in `kinematics.py` looked up bare names (`"shoulder_pan"`), causing `.get("shoulder_pan", 0.0)` to always return the default `0.0`. **Every FK call silently computed the zero-config position regardless of input.** This meant:
-- FK always returned `[0.391, 0, 0.226]` (zero-config EE) no matter the actual joint angles
-- IK was always seeded from zero config, not the current arm position
-- All Cartesian primitives (move_left, move_forward, etc.) were based on wrong starting position
+**Reason**: The `.pos` suffix bug was the root cause of IK failures on hardware. With the fix applied and validated (10cm XY square traced correctly), placo FK/IK is accurate enough for the current primitives. Building a lookup table from 75 hand-measured positions is high effort for marginal gain.
 
-**Fix**: Added `_normalize_joint_dict()` that strips `.pos` suffix. Applied to both FK and IK input paths.
-
-**Validation**: After the fix, FK at rest position correctly returns `~[0.145, 0.026, -0.009]` (matches PyBullet). 10cm XY square trajectory computed via IK and executed on real hardware — arm traced the expected shape.
-
-**Impact on Phase 5.5**: The original reason for Phase 5.5 (placo IK produces wrong positions) was **partly caused by this bug**. With the fix, placo FK/IK may be accurate enough for the current primitives. Phase 5.5 (lookup table) may be deferred or reduced in scope. Further hardware testing needed to confirm.
-
-**Methodology lesson**: When debugging FK/IK, always verify the data flow first — check that the function actually receives the joint angles you think it does, before questioning the kinematic model.
-
+**Impact**:
+- Phase 5.5 marked as SKIPPED in BACKLOG.md
+- Phase 6 (Imitation Learning Pipeline) is now unblocked
+- `kinematics.py` remains the motion control path for both sim and hardware
+- `calibration/record_grid.py` stays as-is (could be useful later for fine-tuning accuracy)
+- `control/` directory (joint_lookup, trajectory, executor) will NOT be built

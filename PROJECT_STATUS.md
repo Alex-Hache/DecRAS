@@ -7,7 +7,7 @@ The core thesis: split reasoning (LLM) from execution (MCP primitives) from perc
 
 **Stack**: Claude/Ollama (reasoning) + MCP server (motor primitives) + LeRobot SDK (SO-101 hardware) + PyBullet (simulation)
 
-## Current State (March 2026, updated)
+## Current State (April 2026)
 
 ### Working
 
@@ -88,7 +88,7 @@ datasets/
 
 ### Known Limitations
 
-- **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X. **Phase 5.5 scope under review — the lookup table may no longer be needed now that FK/IK actually works.**
+- **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X.
 - Camera/perception pipeline not tested on real hardware yet
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
@@ -140,18 +140,11 @@ All 8 motion primitives hardware-validated (March 2026):
 
 ## Next Steps
 
-### Phase 5.5 — Fix Motion Control: Joint-Space Lookup (CURRENT BLOCKER)
+### Phase 5.5 — Fix Motion Control: Joint-Space Lookup (SKIPPED)
 
-placo IK produces wrong positions on real hardware (inaccurate DH params). Replacing with:
-1. `calibration/record_grid.py` — record (xyz, joints) pairs by teleoperating to a grid of ~75 positions **(DONE — scaffold)**
-2. `control/joint_lookup.py` — KDTree KNN + inverse-distance weighting; refuses out-of-bounds targets
-3. `control/trajectory.py` — minimum-jerk joint-space interpolation (closed-form, 20 lines)
-4. `control/executor.py` — sends trajectory at 50Hz via robot.send_action()
-5. Wire into MCP server primitives; keep kinematics.py for simulation fallback only
+Originally planned to replace placo FK/IK with a data-driven lookup table. **Skipped (April 2026)**: the `.pos` suffix bug was the root cause of IK failures — with the fix, placo FK/IK is accurate enough (validated with 10cm XY square on hardware).
 
-**Phase 6 is blocked on this.** Segmenter output is meaningless until primitives execute correctly.
-
-### Phase 6 — Imitation Learning Pipeline (BLOCKED ON 5.5)
+### Phase 6 — Imitation Learning Pipeline (CURRENT)
 
 **Teleoperation recording (DONE)**:
 - `scripts/record_teleop.py` — wires LeRobot's `SOFollower` + `SOLeader` + `LeRobotDataset`
@@ -168,7 +161,7 @@ placo IK produces wrong positions on real hardware (inaccurate DH params). Repla
 - `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
-**Next (after Phase 5.5)**:
+**Next**:
 - Build demo store writer: segmenter JSON + task string → Demo JSON on disk
 - Build demo retriever: TF-IDF/sentence-transformer cosine similarity on task descriptions
 - RAG: inject retrieved demo sequences into LLM system prompt as few-shot examples

@@ -11,13 +11,12 @@
 
 ---
 
-## Phase 5.5 — Fix Motion Control: Joint-Space Lookup (CURRENT — BLOCKER)
+## Phase 5.5 — Fix Motion Control: Joint-Space Lookup (SKIPPED)
 
-> **Why this comes first**: The current IK (placo/PyBullet) produces wrong positions on
-> real hardware because the DH parameters don't match the 3D-printed arm geometry. Every
-> Cartesian primitive (move_left, move_forward, etc.) is unreliable. Phase 6 imitation
-> learning builds on these primitives — if they don't work, segmenter output is meaningless.
-> This must be fixed before anything else.
+> **SKIPPED (2026-04-12)**: The `.pos` suffix bug in kinematics.py was the root cause of IK
+> failures on hardware (see DECISIONS.md, 2026-04-08). With the fix applied and validated
+> (10cm XY square traced correctly), placo FK/IK is accurate enough. Lookup table approach
+> abandoned — high effort for marginal gain.
 
 ### 5.5.1 Build Calibration Recording Script
 
@@ -76,11 +75,10 @@
 
 ---
 
-## Phase 6 — Imitation Learning Pipeline (BLOCKED ON 5.5)
+## Phase 6 — Imitation Learning Pipeline (CURRENT)
 
-> **⚠ Do not start Phase 6 until Phase 5.5 is complete.** The segmenter decomposes
-> teleoperation into primitives. If those primitives don't execute correctly (because IK
-> is broken), the entire imitation learning pipeline produces garbage.
+> FK/IK validated on hardware after `.pos` bug fix (April 2026). Phase 5.5 skipped.
+> Primitives are reliable — proceed with imitation learning pipeline.
 
 ### 6.1 Validate Existing Tooling
 
