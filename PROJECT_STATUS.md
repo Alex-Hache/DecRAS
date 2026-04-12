@@ -161,7 +161,13 @@ Originally planned to replace placo FK/IK with a data-driven lookup table. **Ski
 - `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
-**Next**:
+**Next — Test Zero (CRITICAL GATE)**:
+- Replay a segmenter-parsed sequence on the robot via MCP primitives
+- If the arm reproduces the original task → Path B is viable, proceed with demo store + RAG
+- If not → segmenter fidelity is insufficient, must explore alternatives (learned segmenter, Path A)
+- See DECISIONS.md "The Segmenter is the Critical Gate" (2026-04-12) for full analysis
+
+**Then (if Test Zero passes)**:
 - Build demo store writer: segmenter JSON + task string → Demo JSON on disk
 - Build demo retriever: TF-IDF/sentence-transformer cosine similarity on task descriptions
 - RAG: inject retrieved demo sequences into LLM system prompt as few-shot examples

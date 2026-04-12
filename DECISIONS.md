@@ -66,3 +66,71 @@
 - `kinematics.py` remains the motion control path for both sim and hardware
 - `calibration/record_grid.py` stays as-is (could be useful later for fine-tuning accuracy)
 - `control/` directory (joint_lookup, trajectory, executor) will NOT be built
+
+---
+
+## 2026-04-12 — Two-Path Strategy: Path B (top-down) + Path A (bottom-up)
+
+**Decision**: Pursue two complementary approaches to imitation learning, not one.
+
+### Path B — Top-Down (CURRENT, Phase 6)
+
+Hand-designed object-relative primitives → segmenter decomposes teleop demos into tool call sequences → few-shot/RAG injection into LLM prompt → LLM reasons and plans from day one.
+
+- Fast to build (4 weekends)
+- Fully interpretable — you can read and improve the LLM's reasoning
+- Primitive vocabulary is human-designed (may not match what the robot actually needs)
+
+### Path A — Bottom-Up (FUTURE, research track)
+
+Low-level axis primitives at very high frequency → LLM acts as trajectory replayer → embed tool call sequences (e.g. `[right(0.01), right(0.01), down(0.01), grasp(3)]` → vector) → similar sequences map to nearby vectors → natural action clusters emerge → those clusters become data-driven primitives → retrain LLM to plan over discovered vocabulary.
+
+- Essentially Action Chunking (ACT) but over tool-call tokens instead of joint-angle tokens
+- 3-6 month research project, not a weekend POC
+- Loses interpretability during the middle phase (embeddings are opaque)
+- Risk: at high frequency the LLM becomes an expensive trajectory interpolator — a tiny MLP would be faster
+- Real value is the **bootstrap path**: low-level replay is just data collection → embedding is vocabulary discovery → final phase restores LLM as planner over grounded vocabulary
+
+### Strategy
+
+- **Do Path B now** to prove the full loop works (LLM + primitives + demos)
+- **Path A runs as passive data collection**: every teleoperation session records full high-frequency trajectories, building the dataset for future embedding analysis
+- When enough data exists, run embedding analysis offline to see if natural clusters emerge
+- If clusters match hand-designed primitives → validation. If they diverge → upgrade the vocabulary
+- Path A retroactively validates or improves Path B. They are not mutually exclusive.
+
+---
+
+## 2026-04-12 — The Segmenter is the Critical Gate
+
+**Context**: Before choosing between Path A and Path B, we identified a circular dependency in the reasoning:
+
+1. Path B assumes the segmenter faithfully decomposes teleop demos into primitive sequences
+2. If the segmenter is approximate, replayed sequences don't reproduce the task
+3. Compensating with closed-loop vision feedback (camera + LLM adjusts) won't work — an LLM is not a world model
+4. This pushes back toward Path A (high-frequency replay → embedding → discovered vocabulary)
+5. But Path A is a 3-6 month research project
+
+**Decision**: The segmenter is the critical gate. Before committing to either path, we must run **Test Zero**:
+
+1. Take a teleoperated episode (sticks_v1)
+2. Run it through the segmenter → sequence of MCP tool calls
+3. Replay that sequence on the robot via MCP primitives
+4. Observe: does the arm reproduce the original task?
+
+**If Test Zero passes** (segmenter output replays correctly):
+- Path B is viable — segmenter fidelity is sufficient
+- Proceed with demo store, RAG, few-shot, fine-tuning
+- The hand-designed primitive vocabulary works well enough
+
+**If Test Zero fails** (replayed sequence doesn't match original task):
+- Path B collapses — everything built on segmenter output inherits the error
+- Options to explore:
+  - **Improve the segmenter**: tune thresholds, better smoothing, smarter merging
+  - **Replace the segmenter with a learned model**: train a small model (not hand-coded heuristics) to parse trajectories into primitives — this is a research axis of its own
+  - **Skip segmentation entirely**: go Path A — high-frequency replay, embed raw tool call sequences, let clusters emerge from data
+- The "learned segmenter" option is interesting: a model that watches a trajectory and outputs the primitive decomposition could generalize better than greedy axis-dominant heuristics, but it needs training data (pairs of trajectories + ground-truth primitive sequences), which is a chicken-and-egg problem unless bootstrapped from the heuristic segmenter
+
+**Open research question**: Is there a middle ground between a static heuristic segmenter and a full Path A embedding pipeline? A learned segmenter (small transformer or even an LLM prompted with trajectory data) could be that middle ground — more adaptive than heuristics, less infrastructure than full embedding discovery. This is worth exploring but is a separate research axis.
+
+**Key insight**: The architecture's value proposition (LLM reasons, primitives execute) only holds if there exists a faithful mapping between continuous trajectories and discrete primitive sequences. The segmenter *is* that mapping. If it's lossy, the entire decoupled approach needs rethinking.
