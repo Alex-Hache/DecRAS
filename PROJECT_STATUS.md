@@ -161,17 +161,20 @@ Originally planned to replace placo FK/IK with a data-driven lookup table. **Ski
 - `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
-**Next — Test Zero (CRITICAL GATE)**:
-- Replay a segmenter-parsed sequence on the robot via MCP primitives
-- If the arm reproduces the original task → Path B is viable, proceed with demo store + RAG
-- If not → segmenter fidelity is insufficient, must explore alternatives (learned segmenter, Path A)
-- See DECISIONS.md "The Segmenter is the Critical Gate" (2026-04-12) for full analysis
+**Phase 6A — move_to_delta + Segmenter v2 (CURRENT)**:
+- Add `move_to_delta(dx, dy, dz)` primitive — diagonal moves in a single IK call
+- Refactor axis-aligned primitives as aliases to `move_to_delta`
+- Rewrite segmenter: waypoint-based instead of greedy dominant-axis
+- **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
 
-**Then (if Test Zero passes)**:
-- Build demo store writer: segmenter JSON + task string → Demo JSON on disk
-- Build demo retriever: TF-IDF/sentence-transformer cosine similarity on task descriptions
-- RAG: inject retrieved demo sequences into LLM system prompt as few-shot examples
-- Fine-tune LLM on (task description → tool call sequence) pairs from demo data
+**Phase 6B — Full Loop (NEXT)**:
+- Camera setup (IP Webcam on phone) + wire into perception pipeline
+- LLM observe-think-act loop end-to-end on real hardware
+- Analyze LLM failure modes
+- First RAG experiment: inject demo sequence as few-shot example
+
+**Phase 6C — Demo Store & Retrieval (AFTER 6A+6B)**:
+- Demo store writer + retriever + RAG integration + more demos + fine-tuning data
 
 ### Phase 7 — Memory & Context
 

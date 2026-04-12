@@ -101,6 +101,32 @@ Low-level axis primitives at very high frequency → LLM acts as trajectory repl
 
 ---
 
+## 2026-04-12 — Implementation Plan: move_to_delta + Full Loop
+
+**Context**: The axis-aligned primitive vocabulary (`move_left`, `move_forward`...) is the root cause of segmenter infidelity. A diagonal arm movement gets decomposed into sequential staircase moves. Replaying those moves traces a different path than the original. This makes Test Zero almost guaranteed to fail with the current setup.
+
+### Key decisions
+
+**1. New primitive: `move_to_delta(dx, dy, dz)`**
+
+A single tool call that moves the end-effector diagonally in 3D. Implementation: read current joints → FK → add (dx,dy,dz) → IK → send joints. Same as existing axis-aligned primitives but composes all 3 axes in one move. The LLM doesn't need absolute coordinates — it reasons in relative displacements ("5cm forward and 3cm down simultaneously").
+
+The existing axis-aligned primitives (`move_left`, etc.) become convenience aliases — `move_left(0.05)` is just `move_to_delta(0, 0.05, 0)`.
+
+**2. Segmenter v2: waypoint-based**
+
+Instead of greedy dominant-axis → axis-aligned primitives, detect **waypoints** (direction changes, velocity drops, gripper events) and emit one `move_to_delta(dx,dy,dz)` per segment. Much simpler algorithm, much more faithful output. Waypoint density is tunable: more waypoints = more faithful, fewer = more abstract.
+
+**3. Full loop must exist before optimizing**
+
+Camera + perception + LLM → tool calls → robot. Even if the LLM can't plan correctly, the infrastructure must be end-to-end. This is the test bed for everything that follows.
+
+### Implementation order
+
+See BACKLOG.md Phase 6A and 6B for task breakdown.
+
+---
+
 ## 2026-04-12 — The Segmenter is the Critical Gate
 
 **Context**: Before choosing between Path A and Path B, we identified a circular dependency in the reasoning:

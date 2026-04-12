@@ -75,78 +75,109 @@
 
 ---
 
-## Phase 6 — Imitation Learning Pipeline (CURRENT)
+## Phase 6A — move_to_delta + Segmenter v2 (CURRENT)
 
-> FK/IK validated on hardware after `.pos` bug fix (April 2026). Phase 5.5 skipped.
-> Primitives are reliable — proceed with imitation learning pipeline.
+> The axis-aligned primitive vocabulary is the root cause of segmenter infidelity.
+> `move_to_delta(dx, dy, dz)` fixes this by allowing diagonal moves in a single call.
+> Axis-aligned primitives become aliases. See DECISIONS.md (2026-04-12).
 
-### 6.1 Validate Existing Tooling
+### 6A.1 Add `move_to_delta` primitive
 
-- [ ] **Run visualizer on sticks_v1** — `uv run python -m scripts.visualize_trajectory --dataset datasets/sticks_v1` → screenshot the 3D EE plot, sanity-check that FK positions look plausible. If the arm goes through the table or into space, there's a FK/joint-mapping bug.
-  - *Done when*: You have a screenshot and a yes/no on "do these trajectories look right?"
-  - *Time*: 15 min
-
-- [ ] **Run segmenter on sticks_v1** — `uv run python -m scripts.segment_trajectory --dataset datasets/sticks_v1` → inspect the output primitive sequences. Do they make intuitive sense? (e.g., move_forward → move_down → grasp → move_up)
-  - *Done when*: You have JSON output and a gut-check assessment
-  - *Time*: 15 min
-
-- [ ] **Tune segmenter thresholds** — Adjust `SMOOTH_K` and `MIN_PRIM_DIST` in the segmenter until the output primitive sequences match what you visually see in the trajectory plot. This is an iterative loop: change params → re-run → compare.
-  - *Done when*: At least one episode produces a "yeah, that looks right" primitive sequence
-  - *Time*: 30 min
-
-### 6.2 Demo Storage & Retrieval
-
-- [x] **Design demo store schema** — Schema documented in `decras/imitation/retrieval.py` as `Demo`, `Primitive`, `DemoMetadata` dataclasses with full docstring.
-  - *Done when*: Schema documented (even as a comment in code)
-  - *Time*: 15 min
-  - *Tag*: `claude-code` — Claude Code can scaffold this
-
-- [ ] **Build demo store writer** — Script/function that takes segmenter output → writes to demo store format. Put in `decras/imitation/retrieval.py` (or `scripts/` for now).
-  - *Done when*: Can run `segment_trajectory | store_demo` and see a JSON file on disk
+- [ ] **Implement `move_to_delta(dx, dy, dz)` in server.py** — Read current joints → FK → add delta vector → IK → send joints. Single tool call, diagonal movement. Existing axis-aligned primitives (`move_left`, etc.) become thin wrappers that call `move_to_delta` internally.
+  - *Done when*: `move_to_delta(0.05, -0.03, 0.0)` moves the arm diagonally in sim, tests pass
   - *Time*: 30 min
   - *Tag*: `claude-code`
 
-- [ ] **Build demo retriever** — Given a task description string, find the N most similar stored demos. Start simple: TF-IDF or sentence-transformer cosine similarity on task descriptions. No need for a vector DB — you'll have < 100 demos.
-  - *Done when*: `retrieve("pick up the stick") → [demo_1, demo_3]` works
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
-
-- [ ] **RAG integration** — Inject retrieved demo primitive sequences into the LLM system prompt as few-shot examples. Modify `llm_controller/prompt.py` to accept an optional `demo_context` parameter.
-  - *Done when*: The LLM's system prompt includes "Here's how a similar task was done: [primitive sequence]"
-  - *Time*: 30 min
-
-### 6.3 Fine-Tuning Data Preparation
-
-- [ ] **Export training pairs** — From the demo store, generate `(task_description, tool_call_sequence)` pairs in JSONL format suitable for fine-tuning. Each line: `{"messages": [{"role": "user", "content": "pick up the red cube"}, {"role": "assistant", "content": "observe() → move_forward(0.05) → ..."}]}`
-  - *Done when*: JSONL file exists with at least 5 real training pairs
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
-
-- [ ] **Record more demos** — You need variety. Record 5-10 episodes of different simple tasks (pick-place cube, push object, stack). Each recording session is ~15 min.
-  - *Done when*: 3+ different task types in your dataset
-  - *Time*: 15 min per task type (multiple sessions)
-  - *Note*: Requires hardware access
-
----
-
-## Phase 6.5 — Perception on Real Hardware (INDEPENDENT — can do anytime)
-
-- [ ] **Install IP Webcam on phone** — Android app, free. Connect phone to same WiFi as robot PC. Note the stream URL (usually `http://<phone-ip>:8080/video`).
-  - *Done when*: You can open the stream URL in a browser and see live video
-  - *Time*: 10 min
-
-- [ ] **Test ArUco detection on phone stream** — Write a quick OpenCV script that reads from the IP Webcam URL and runs ArUco detection. Print detected marker IDs and corners.
-  - *Done when*: Script prints marker IDs when you hold an ArUco marker in front of the phone
+- [ ] **Refactor axis-aligned primitives as aliases** — `move_left(d)` → `move_to_delta(0, d, 0)`, etc. Keep the old tool names registered (LLM still uses them), but the implementation is a one-liner.
+  - *Done when*: All existing tests still pass, axis-aligned tools call `move_to_delta` internally
   - *Time*: 20 min
   - *Tag*: `claude-code`
 
-- [ ] **Print ArUco markers** — Generate and print 5-10 ArUco markers (use `cv2.aruco` dictionary). Tape them to objects in the workspace.
-  - *Done when*: Physical markers exist and are detectable by the script above
-  - *Time*: 15 min (plus printer access)
+- [ ] **Hardware validation** — Test `move_to_delta` on the real arm. Diagonal move (e.g. 5cm forward + 3cm down) should trace a straight line, not a staircase.
+  - *Done when*: Visual confirmation on hardware
+  - *Time*: 15 min
+  - *Tag*: `hardware`
 
-- [ ] **Wire phone camera into perception pipeline** — Update `perception/camera.py` to accept an IP Webcam URL as input source (alongside USB webcam). The scene graph builder should work unchanged.
-  - *Done when*: `observe()` MCP tool returns scene graph with ArUco-detected objects via phone camera
+### 6A.2 Segmenter v2 (waypoint-based)
+
+- [ ] **Rewrite segmenter core** — Replace greedy dominant-axis algorithm with waypoint detection. Detect direction changes (angle threshold on velocity vector) + velocity drops + gripper events. Between waypoints, emit one `move_to_delta(dx, dy, dz)`. Gripper events still produce `grasp()`/`release()`.
+  - *Done when*: Segmenter v2 on sticks_v2 produces shorter, more intuitive sequences than v1
+  - *Time*: 45 min
+  - *Tag*: `claude-code`
+
+- [ ] **Add waypoint density parameter** — `--density low|medium|high` controls angle threshold for direction changes. High = many small waypoints (faithful replay). Low = few large waypoints (abstract, more like "intent").
+  - *Done when*: Same episode produces 5 primitives (low) vs 20 primitives (high)
+  - *Time*: 20 min
+  - *Tag*: `claude-code`
+
+- [ ] **Visualize segmenter output** — Overlay waypoints on the 3D trajectory plot. Each `move_to_delta` is a straight-line segment. Visual check: do the segments approximate the original curve?
+  - *Done when*: matplotlib plot with trajectory + waypoint markers
+  - *Time*: 20 min
+  - *Tag*: `claude-code`
+
+### 6A.3 Test Zero
+
+- [ ] **Replay segmenter v2 output on hardware** — Take sticks_v2 episode 0, run through segmenter v2 (high density), replay the `move_to_delta` sequence via MCP tools on the real arm. Film it. Compare to the original teleop recording.
+  - *Done when*: Side-by-side comparison video. Honest assessment: does the arm do the same thing?
   - *Time*: 30 min
+  - *Tag*: `hardware`
+  - **This is the critical gate.** If this fails, Path B needs rethinking.
+
+---
+
+## Phase 6B — Full Loop: Camera + LLM + Robot (NEXT)
+
+> The LLM observe-think-act loop must work end-to-end before optimizing any part.
+> Expect the LLM to fail at planning — but the infrastructure must be there.
+
+### 6B.1 Camera setup
+
+- [ ] **Install IP Webcam on phone** — Android app, connect to same WiFi as robot PC. Note stream URL (`http://<phone-ip>:8080/video`).
+  - *Done when*: Stream URL opens in browser with live video
+  - *Time*: 10 min
+
+- [ ] **Wire phone camera into perception pipeline** — Update `perception/camera.py` to accept an IP Webcam URL as input source (alongside USB webcam). Scene graph builder should work unchanged.
+  - *Done when*: `observe()` MCP tool returns scene graph with detected objects via phone camera
+  - *Time*: 30 min
+  - *Tag*: `claude-code`
+
+### 6B.2 LLM loop end-to-end
+
+- [ ] **Test LLM loop with real hardware + camera** — Run `llm_controller/main.py` with the real arm and phone camera. Give it a simple task ("pick up the stick"). Observe what it tries to do. Record the full interaction log.
+  - *Done when*: LLM produces tool calls, arm moves, you have an interaction log to analyze
+  - *Time*: 30 min
+  - *Tag*: `hardware`
+
+- [ ] **Analyze failure modes** — The LLM will almost certainly fail. Document *how* it fails: wrong tool sequence? wrong distances? doesn't understand scene graph? This analysis drives what to build next.
+  - *Done when*: Written analysis of failure modes (append to DECISIONS.md)
+  - *Time*: 15 min
+
+### 6B.3 First RAG experiment (if Test Zero passed)
+
+- [ ] **Inject demo sequence into LLM prompt** — Take a successful segmenter v2 sequence, hardcode it as a few-shot example in `llm_controller/prompt.py`. Re-run the LLM loop on the same task. Does the example help?
+  - *Done when*: Comparison: LLM output with vs without the demo example
+  - *Time*: 30 min
+
+---
+
+## Phase 6C — Demo Store & Retrieval (AFTER 6A + 6B)
+
+> Only worth building once Test Zero passes and the LLM loop exists.
+
+- [x] **Design demo store schema** — `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses.
+
+- [ ] **Build demo store writer** — Segmenter v2 output + task string → Demo JSON on disk.
+  - *Tag*: `claude-code`
+
+- [ ] **Build demo retriever** — TF-IDF or sentence-transformer cosine similarity on task descriptions. `retrieve("pick up the stick") → [demo_1, demo_3]`.
+  - *Tag*: `claude-code`
+
+- [ ] **RAG integration** — Inject retrieved demos into LLM prompt via `llm_controller/prompt.py`.
+
+- [ ] **Record more demos** — 5-10 episodes of different tasks (pick-place, push, stack).
+  - *Tag*: `hardware`
+
+- [ ] **Export fine-tuning pairs** — `(task_description, tool_call_sequence)` JSONL for fine-tuning.
   - *Tag*: `claude-code`
 
 ---
@@ -162,7 +193,6 @@
 ## Architectural Debt (DO WHEN IT HURTS, NOT BEFORE)
 
 - [ ] Refactor `scripts/` into `decras/` library (see PROJECT_STATUS.md for planned structure)
-- [ ] Remove placo/PyBullet IK dependency once lookup table is proven stable
 - [ ] Upgrade calibration from ruler measurements to ArUco-based EE position measurement
 
 ---
