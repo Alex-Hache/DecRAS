@@ -88,7 +88,7 @@ datasets/
 
 ### Known Limitations
 
-- **placo IK broken on hardware** — DH parameters don't match the 3D-printed arm geometry → primitives move to wrong positions. Additionally, IK changes wrist_flex during EE-space moves → Z drop when moving in X. **Being replaced by data-driven joint-space lookup (Phase 5.5 — current blocker).**
+- **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X. **Phase 5.5 scope under review — the lookup table may no longer be needed now that FK/IK actually works.**
 - Camera/perception pipeline not tested on real hardware yet
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`

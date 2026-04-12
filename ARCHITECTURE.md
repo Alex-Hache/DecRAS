@@ -213,9 +213,11 @@ Path A tries to resolve it (discover the right vocabulary from data).
 - **Robot**: SO-101 follower arm (Feetech servos), SO-100/101 leader for teleoperation
 - **Gripper convention**: 0 = CLOSED, 100 = OPEN (verified on hardware, was previously inverted)
 - **FK reference**: WORK_POSITION EE at ~[0.194, 0.050, 0.126]m
-- **IK status**: BROKEN. placo IK uses inaccurate DH parameters → arm moves to wrong positions.
-  Additionally changes wrist_flex during EE-space moves → Z drop when moving in X.
-  Being replaced by data-driven joint-space lookup (see Decision #6).
+- **FK/IK status**: placo FK/IK now works correctly after fixing `.pos` suffix key mismatch
+  (April 2026). The prior "broken IK" diagnosis was largely caused by FK always computing
+  zero-config, not by incorrect DH parameters. Validated with 10cm XY square trajectory on
+  real hardware. Known remaining issue: position-only IK changes wrist_flex during EE moves
+  → small Z drift when moving in X. Phase 5.5 (lookup table) scope under review.
 - **Motor units**: LeRobot uses raw Feetech STS3215 positions (range 0–4095). Lookup table
   should use whatever units `robot.get_observation()` returns / `robot.send_action()` expects.
 - **Servo holding**: Under gravity, servos need active hold loops (repeated send_joint_positions)

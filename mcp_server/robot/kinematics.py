@@ -69,6 +69,15 @@ def _urdf_to_hw_deg(joint_name: str, urdf_deg: float) -> float:
     return HW_TO_URDF_SIGN.get(joint_name, 1) * urdf_deg
 
 
+def _normalize_joint_dict(hw_joints: dict[str, float]) -> dict[str, float]:
+    """Strip '.pos' suffix from keys so both formats work.
+
+    Accepts: {"shoulder_pan": 10} or {"shoulder_pan.pos": 10}
+    Returns: {"shoulder_pan": 10}
+    """
+    return {k.removesuffix(".pos"): v for k, v in hw_joints.items()}
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -76,6 +85,7 @@ def _urdf_to_hw_deg(joint_name: str, urdf_deg: float) -> float:
 def joints_to_cartesian(hw_joints: dict[str, float]) -> list[float]:
     """FK: hardware joint angles (degrees) → EE position [x, y, z] in meters."""
     _init()
+    hw_joints = _normalize_joint_dict(hw_joints)
     urdf_rad = np.deg2rad([_hw_to_urdf_deg(n, hw_joints.get(n, 0.0)) for n in JOINT_NAMES_ARM])
     for i, jn in enumerate(JOINT_NAMES_ARM):
         _robot.set_joint(jn, urdf_rad[i])
@@ -98,7 +108,7 @@ def cartesian_to_joints(
     change for a pure position move.
     """
     _init()
-    seed = seed_hw_joints or {}
+    seed = _normalize_joint_dict(seed_hw_joints or {})
 
     # Seed the solver from current joint configuration
     seed_urdf_rad = np.deg2rad([_hw_to_urdf_deg(n, seed.get(n, 0.0)) for n in JOINT_NAMES_ARM])
