@@ -1,85 +1,145 @@
 {
-  "episode": 0,
-  "start_ee_position": {
-    "x": 0.1353,
-    "y": 0.0318,
-    "z": -0.0119
-  },
+  "task": "pick stick and place at target",
   "primitives": [
     {
-      "primitive": "move_forward",
-      "distance_m": 0.0623
+      "tool": "move_forward",
+      "args": {
+        "distance_m": 0.0623
+      },
+      "timestamp": 0.0
     },
     {
-      "primitive": "move_right",
-      "distance_m": 0.0457
+      "tool": "move_right",
+      "args": {
+        "distance_m": 0.0457
+      },
+      "timestamp": 0.2333
     },
     {
-      "primitive": "move_forward",
-      "distance_m": 0.0295
+      "tool": "move_forward",
+      "args": {
+        "distance_m": 0.0295
+      },
+      "timestamp": 1.5
     },
     {
-      "primitive": "move_up",
-      "distance_m": 0.1676
+      "tool": "move_up",
+      "args": {
+        "distance_m": 0.1676
+      },
+      "timestamp": 1.9333
     },
     {
-      "primitive": "move_left",
-      "distance_m": 0.1866
+      "tool": "move_left",
+      "args": {
+        "distance_m": 0.1866
+      },
+      "timestamp": 4.8667
     },
     {
-      "primitive": "move_down",
-      "distance_m": 0.0917
+      "tool": "move_down",
+      "args": {
+        "distance_m": 0.0917
+      },
+      "timestamp": 6.3
     },
     {
-      "primitive": "move_back",
-      "distance_m": 0.0151
+      "tool": "move_back",
+      "args": {
+        "distance_m": 0.0151
+      },
+      "timestamp": 11.7
     },
     {
-      "primitive": "grasp",
-      "force": 0.5
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 13.7
     },
     {
-      "primitive": "move_down",
-      "distance_m": 0.0182
+      "tool": "move_down",
+      "args": {
+        "distance_m": 0.0182
+      },
+      "timestamp": 14.7333
     },
     {
-      "primitive": "release"
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.6
     },
     {
-      "primitive": "move_up",
-      "distance_m": 0.1022
+      "tool": "move_up",
+      "args": {
+        "distance_m": 0.1022
+      },
+      "timestamp": 17.4
     },
     {
-      "primitive": "move_left",
-      "distance_m": 0.1985
+      "tool": "move_left",
+      "args": {
+        "distance_m": 0.1985
+      },
+      "timestamp": 19.4
     },
     {
-      "primitive": "move_back",
-      "distance_m": 0.0282
+      "tool": "move_back",
+      "args": {
+        "distance_m": 0.0282
+      },
+      "timestamp": 22.6667
     },
     {
-      "primitive": "move_up",
-      "distance_m": 0.0185
+      "tool": "move_up",
+      "args": {
+        "distance_m": 0.0185
+      },
+      "timestamp": 26.3333
     },
     {
-      "primitive": "move_forward",
-      "distance_m": 0.0767
+      "tool": "move_forward",
+      "args": {
+        "distance_m": 0.0767
+      },
+      "timestamp": 26.7
     },
     {
-      "primitive": "move_right",
-      "distance_m": 0.3209
+      "tool": "move_right",
+      "args": {
+        "distance_m": 0.3209
+      },
+      "timestamp": 27.5667
     },
     {
-      "primitive": "move_back",
-      "distance_m": 0.0829
+      "tool": "move_back",
+      "args": {
+        "distance_m": 0.0829
+      },
+      "timestamp": 30.4333
     },
     {
-      "primitive": "move_down",
-      "distance_m": 0.1011
+      "tool": "move_down",
+      "args": {
+        "distance_m": 0.1011
+      },
+      "timestamp": 31.8
     },
     {
-      "primitive": "move_back",
-      "distance_m": 0.0903
+      "tool": "move_back",
+      "args": {
+        "distance_m": 0.0903
+      },
+      "timestamp": 34.8
     }
-  ]
+  ],
+  "metadata": {
+    "dataset": "sticks_v2",
+    "episode": 0,
+    "start_ee_position": {
+      "x": 0.1353,
+      "y": 0.0318,
+      "z": -0.0119
+    }
+  }
 }
