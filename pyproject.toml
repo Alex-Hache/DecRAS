@@ -22,5 +22,10 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
 # ROS launch_testing plugin conflicts with venv.
 # Run tests with: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest

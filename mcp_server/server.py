@@ -418,13 +418,31 @@ def _joint_move(joint_deltas: dict, action_name: str, action_args: dict) -> str:
 
 @mcp.tool()
 @_safe_tool
+def move_to_delta(dx: float = 0.0, dy: float = 0.0, dz: float = 0.0) -> str:
+    """Move gripper by a 3D Cartesian delta vector in the robot base frame (meters).
+
+    Allows diagonal moves in a single IK call. The axis-aligned primitives
+    (move_left, move_forward, etc.) are convenience aliases for this tool.
+
+    Frame: +X = forward (away from base), +Y = left, +Z = up.
+
+    Args:
+        dx: X displacement in meters (+forward / -back)
+        dy: Y displacement in meters (+left / -right)
+        dz: Z displacement in meters (+up / -down)
+    """
+    return _cartesian_move(dx, dy, dz, "move_to_delta", {"dx": dx, "dy": dy, "dz": dz})
+
+
+@mcp.tool()
+@_safe_tool
 def move_left(distance_m: float = 0.05) -> str:
     """Move gripper left (+Y) in robot base frame.
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(0, +distance_m, 0, "move_left", {"distance_m": distance_m})
+    return move_to_delta(0, +distance_m, 0)
 
 
 @mcp.tool()
@@ -435,7 +453,7 @@ def move_right(distance_m: float = 0.05) -> str:
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(0, -distance_m, 0, "move_right", {"distance_m": distance_m})
+    return move_to_delta(0, -distance_m, 0)
 
 
 @mcp.tool()
@@ -446,7 +464,7 @@ def move_up(distance_m: float = 0.05) -> str:
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(0, 0, +distance_m, "move_up", {"distance_m": distance_m})
+    return move_to_delta(0, 0, +distance_m)
 
 
 @mcp.tool()
@@ -457,7 +475,7 @@ def move_down(distance_m: float = 0.05) -> str:
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(0, 0, -distance_m, "move_down", {"distance_m": distance_m})
+    return move_to_delta(0, 0, -distance_m)
 
 
 @mcp.tool()
@@ -468,7 +486,7 @@ def move_forward(distance_m: float = 0.05) -> str:
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(+distance_m, 0, 0, "move_forward", {"distance_m": distance_m})
+    return move_to_delta(+distance_m, 0, 0)
 
 
 @mcp.tool()
@@ -479,7 +497,7 @@ def move_back(distance_m: float = 0.05) -> str:
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
     """
-    return _cartesian_move(-distance_m, 0, 0, "move_back", {"distance_m": distance_m})
+    return move_to_delta(-distance_m, 0, 0)
 
 
 @mcp.tool()
