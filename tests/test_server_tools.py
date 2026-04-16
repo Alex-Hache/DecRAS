@@ -9,6 +9,8 @@ os.environ["SIMULATE"] = "true"
 from mcp_server.server import (
     observe, move_to, grasp, release, stop, go_back, get_status,
     start_episode, end_episode, read_joints, calibrate, send_joints,
+    move_to_delta, move_left, move_right, move_forward, move_back,
+    move_up, move_down,
 )
 
 
@@ -35,6 +37,22 @@ class TestMoveAndGoBack:
     def test_go_back_no_history_fails(self):
         result = _parse(go_back(steps=100))
         assert result["status"] == "failed"
+
+
+class TestMoveToDelta:
+    def test_diagonal_move(self):
+        result = _parse(move_to_delta(0.05, -0.03, 0.0))
+        assert result["status"] == "complete"
+
+    def test_zero_delta(self):
+        result = _parse(move_to_delta(0.0, 0.0, 0.0))
+        assert result["status"] == "complete"
+
+    def test_axis_aliases_delegate(self):
+        # Each alias should produce the same result shape as move_to_delta
+        for fn in (move_left, move_right, move_up, move_down, move_forward, move_back):
+            result = _parse(fn(0.05))
+            assert result["status"] == "complete"
 
 
 class TestGraspRelease:

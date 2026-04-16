@@ -800,6 +800,11 @@ dev = [
     { name = "pytest" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "lerobot", extras = ["feetech"], specifier = ">=0.4.4" },
@@ -813,6 +818,9 @@ requires-dist = [
     { name = "requests" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "deepdiff"

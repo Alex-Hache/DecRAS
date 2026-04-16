@@ -11,7 +11,8 @@ The core thesis: split reasoning (LLM) from execution (MCP primitives) from perc
 
 ### Working
 
-- **MCP server** with 20 tools: `observe`, `move_to`, `grasp`, `release`, `stop`, `go_back`, `get_status`, `calibrate`, `read_joints`, `send_joints`, `start_episode`, `end_episode`, `move_left`, `move_right`, `move_up`, `move_down`, `move_forward`, `move_back`, `rotate_gripper`, `tilt_gripper`
+- **MCP server** with 21 tools: `observe`, `move_to`, `move_to_delta`, `grasp`, `release`, `stop`, `go_back`, `get_status`, `calibrate`, `read_joints`, `send_joints`, `start_episode`, `end_episode`, `move_left`, `move_right`, `move_up`, `move_down`, `move_forward`, `move_back`, `rotate_gripper`, `tilt_gripper`
+  - `move_to_delta(dx, dy, dz)` — diagonal 3D EE move in a single IK call; axis-aligned primitives are now aliases
 - **Real hardware control** via LeRobot v0.4 SDK — SO-101 follower arm connects, calibrates, reads joints, moves, grasps
 - **PyBullet simulation** with real SO-101 URDF + STL meshes — full pick-and-place verified
 - **MCP-to-Claude integration** — Claude Code can call tools on the real robot via `.mcp.json` (uses `sg dialout` for serial permissions)
@@ -140,10 +141,6 @@ All 8 motion primitives hardware-validated (March 2026):
 
 ## Next Steps
 
-### Phase 5.5 — Fix Motion Control: Joint-Space Lookup (SKIPPED)
-
-Originally planned to replace placo FK/IK with a data-driven lookup table. **Skipped (April 2026)**: the `.pos` suffix bug was the root cause of IK failures — with the fix, placo FK/IK is accurate enough (validated with 10cm XY square on hardware).
-
 ### Phase 6 — Imitation Learning Pipeline (CURRENT)
 
 **Teleoperation recording (DONE)**:
@@ -162,9 +159,9 @@ Originally planned to replace placo FK/IK with a data-driven lookup table. **Ski
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
 **Phase 6A — move_to_delta + Segmenter v2 (CURRENT)**:
-- Add `move_to_delta(dx, dy, dz)` primitive — diagonal moves in a single IK call
-- Refactor axis-aligned primitives as aliases to `move_to_delta`
-- Rewrite segmenter: waypoint-based instead of greedy dominant-axis
+- ✅ `move_to_delta(dx, dy, dz)` added — diagonal 3D EE move in one IK call
+- ✅ Axis-aligned primitives refactored as one-liner aliases to `move_to_delta`
+- Rewrite segmenter: waypoint-based instead of greedy dominant-axis (next)
 - **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
 
 **Phase 6B — Full Loop (NEXT)**:

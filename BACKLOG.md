@@ -25,53 +25,29 @@
   - *Time*: 30 min
   - *Tag*: `claude-code` (scaffold), then `hardware` (test on robot)
 
-- [ ] **Record calibration grid** — Teleoperate arm to ~75 positions across workspace. X: 0.15–0.35m (5 pts), Y: ±0.15m (5 pts), Z: table to +0.15m (3 heights). Plus 5-10 extra at key locations (home, grasp height). Measure positions with ruler.
-  - *Done when*: `calibration_data.json` has 75+ entries with plausible positions
-  - *Time*: 45–60 min (one longer session)
-  - *Note*: `hardware` — this is the one session that can't be micro
+- [x] **Record calibration grid** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
 ### 5.5.2 Build Joint Lookup
 
-- [ ] **Create `control/joint_lookup.py`** — Load calibration JSON, build KDTree from positions, implement `solve(target_xyz)` with KNN (K=6) + inverse-distance weighting. Add workspace bounds check: refuse targets >5cm from any recorded point. Add `get_workspace_bounds()` method.
-  - *Done when*: Unit test passes: `solve(recorded_point)` returns the recorded joints (± tolerance)
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
+- [x] **Create `control/joint_lookup.py`** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
-- [ ] **Add RBF interpolation option** — Optionally upgrade from KNN to `scipy.interpolate.RBFInterpolator` with thin_plate_spline kernel for smoother results. Keep KNN as fallback.
-  - *Done when*: Both interpolation modes work, can toggle via config
-  - *Time*: 20 min
-  - *Tag*: `claude-code`
+- [x] **Add RBF interpolation option** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
 ### 5.5.3 Build Trajectory Execution
 
-- [ ] **Create `control/trajectory.py`** — `minimum_jerk_joint_trajectory(q_start, q_end, duration, hz)` → (steps, num_joints) array. `compute_duration(q_start, q_end, speed)` with three presets: "slow" (near objects), "normal", "fast" (free space).
-  - *Done when*: Unit test: trajectory starts at q_start, ends at q_end, has zero velocity at endpoints
-  - *Time*: 20 min
-  - *Tag*: `claude-code`
+- [x] **Create `control/trajectory.py`** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
-- [ ] **Create `control/executor.py`** — `TrajectoryExecutor` wrapping the robot. `execute(trajectory, gripper_value)` sends joints at 50Hz with timing control. Position history buffer for `go_back(steps)`.
-  - *Done when*: Can execute a min-jerk trajectory in simulation or dry-run mode
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
+- [x] **Create `control/executor.py`** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
 ### 5.5.4 Wire Into MCP Server
 
-- [ ] **Replace IK path with lookup** — Update the MCP primitives (move_left, move_forward, etc.) to use `JointLookup.solve()` → `minimum_jerk_trajectory()` → `TrajectoryExecutor.execute()` instead of `kinematics.py` FK/IK. Keep `kinematics.py` for simulation fallback.
-  - *Done when*: `move_forward(0.05)` on real hardware actually moves forward 5cm (± 1cm)
-  - *Time*: 30 min
-  - *Note*: `hardware` — needs physical verification
+- [x] **Replace IK path with lookup** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
-- [ ] **Build `calibration/validate_grid.py`** — Command arm to each recorded position sequentially, visually verify accuracy. Flag points with large errors for re-recording.
-  - *Done when*: Arm visits 10+ recorded points and they all look correct
-  - *Time*: 20 min
-  - *Tag*: `claude-code` (scaffold), then `hardware` (run on robot)
+- [x] **Build `calibration/validate_grid.py`** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
 ### 5.5.5 Validate End-to-End
 
-- [ ] **Run a manual pick-and-place** — Using the new lookup-based primitives: move_forward → move_down → grasp → move_up → move_left → release. Does the arm actually do what the primitives say?
-  - *Done when*: You can pick up an object and place it somewhere else using MCP tool calls
-  - *Time*: 30 min
-  - *Note*: `hardware` — the real test
+- [x] **Run a manual pick-and-place** — *(skipped — Phase 5.5 abandoned, see DECISIONS.md 2026-04-12)*
 
 ---
 
@@ -83,15 +59,9 @@
 
 ### 6A.1 Add `move_to_delta` primitive
 
-- [ ] **Implement `move_to_delta(dx, dy, dz)` in server.py** — Read current joints → FK → add delta vector → IK → send joints. Single tool call, diagonal movement. Existing axis-aligned primitives (`move_left`, etc.) become thin wrappers that call `move_to_delta` internally.
-  - *Done when*: `move_to_delta(0.05, -0.03, 0.0)` moves the arm diagonally in sim, tests pass
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
+- [x] **Implement `move_to_delta(dx, dy, dz)` in server.py** — Read current joints → FK → add delta vector → IK → send joints. Single tool call, diagonal movement. Existing axis-aligned primitives (`move_left`, etc.) become thin wrappers that call `move_to_delta` internally.
 
-- [ ] **Refactor axis-aligned primitives as aliases** — `move_left(d)` → `move_to_delta(0, d, 0)`, etc. Keep the old tool names registered (LLM still uses them), but the implementation is a one-liner.
-  - *Done when*: All existing tests still pass, axis-aligned tools call `move_to_delta` internally
-  - *Time*: 20 min
-  - *Tag*: `claude-code`
+- [x] **Refactor axis-aligned primitives as aliases** — `move_left(d)` → `move_to_delta(0, d, 0)`, etc. Keep the old tool names registered (LLM still uses them), but the implementation is a one-liner.
 
 - [ ] **Hardware validation** — Test `move_to_delta` on the real arm. Diagonal move (e.g. 5cm forward + 3cm down) should trace a straight line, not a staircase.
   - *Done when*: Visual confirmation on hardware
