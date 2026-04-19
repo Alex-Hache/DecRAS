@@ -1,0 +1,72 @@
+{
+  "task": "pick stick and place at target",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0993,
+        "dy": 0.052,
+        "dz": 0.0188
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 13.7
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0048,
+        "dy": 0.0056,
+        "dz": 0.1111
+      },
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.1232,
+        "dy": 0.2125,
+        "dz": -0.0476
+      },
+      "timestamp": 19.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.2192,
+        "dy": -0.363,
+        "dz": 0.0545
+      },
+      "timestamp": 24.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.1373,
+        "dy": 0.0464,
+        "dz": -0.1158
+      },
+      "timestamp": 30.2333
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v2",
+    "episode": 0,
+    "density": "low",
+    "start_ee_position": {
+      "x": 0.1353,
+      "y": 0.0318,
+      "z": -0.0119
+    }
+  }
+}

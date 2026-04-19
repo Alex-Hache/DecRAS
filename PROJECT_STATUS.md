@@ -68,8 +68,8 @@ scripts/
   replay.py              — Legacy JSON episode viewer (LLM traces)
   record_teleop.py       — Teleoperation recording → LeRobotDataset
   replay_teleop.py       — Replay recorded episode on follower hardware
-  visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors
-  segment_trajectory.py  — Greedy dominant-axis segmenter → MCP primitive sequence JSON
+  visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors; --segment --density {low|medium|high} overlays segmenter v2 waypoints + straight-line segments
+  segment_trajectory.py  — Segmenter v2 (waypoint-based): direction changes + speed dips + gripper events → one move_to_delta per segment; --density tunes granularity (low~5, medium~13, high~26 primitives on sticks_v2)
 
 calibration/
   record_grid.py         — Interactive calibration grid recorder (leader+follower teleop, manual xyz input, resume support)
@@ -154,8 +154,8 @@ All 8 motion primitives hardware-validated (March 2026):
 - Run: `uv run python -m scripts.record_teleop --task "..." --episodes 10 --out datasets/pick_cube`
 
 **Trajectory tooling (DONE)**:
-- `scripts/visualize_trajectory.py` — FK over all Parquet frames → 3D matplotlib EE path, one color per episode, grasp/release markers
-- `scripts/segment_trajectory.py` — greedy dominant-axis segmenter → list of MCP primitive calls; detects gripper events (grasp/release) to split phases; outputs JSON
+- `scripts/visualize_trajectory.py` — FK over all Parquet frames → 3D matplotlib EE path, one color per episode, grasp/release markers. `--segment --density {low|medium|high}` overlays segmenter v2 output (waypoints + straight-line segments) on top of the raw trajectory.
+- `scripts/segment_trajectory.py` — **Segmenter v2 (waypoint-based)**: detects direction changes (windowed velocity-angle), speed dips (local minima below fraction of v_max), and gripper events; emits one `move_to_delta(dx, dy, dz)` per segment plus `grasp()`/`release()` at gripper events. `--density low|medium|high` tunes angle threshold / dip ratio / min segment distance. On sticks_v2 ep 0: 7 primitives at low vs 26 at high (v1 baseline was 19 staircase primitives).
 
 **Demo store schema (DONE)**:
 - `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
@@ -164,7 +164,7 @@ All 8 motion primitives hardware-validated (March 2026):
 **Phase 6A — move_to_delta + Segmenter v2 (CURRENT)**:
 - ~~Add `move_to_delta(dx, dy, dz)` primitive~~ — DONE: diagonal moves in a single IK call
 - ~~Refactor axis-aligned primitives as aliases~~ — DONE: `move_left` etc. are now documented aliases of `move_to_delta`
-- Rewrite segmenter: waypoint-based instead of greedy dominant-axis
+- ~~Rewrite segmenter: waypoint-based instead of greedy dominant-axis~~ — DONE: segmenter v2 with `--density low|medium|high`, visualized via `visualize_trajectory.py --segment`
 - **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
 
 **Phase 6B — Full Loop (NEXT)**:

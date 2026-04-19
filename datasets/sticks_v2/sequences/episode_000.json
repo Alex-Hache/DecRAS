@@ -2,53 +2,40 @@
   "task": "pick stick and place at target",
   "primitives": [
     {
-      "tool": "move_forward",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0623
+        "dx": 0.0534,
+        "dy": -0.0156,
+        "dz": -0.0045
       },
       "timestamp": 0.0
     },
     {
-      "tool": "move_right",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0457
+        "dx": -0.0007,
+        "dy": -0.0499,
+        "dz": -0.0003
       },
-      "timestamp": 0.2333
+      "timestamp": 0.2
     },
     {
-      "tool": "move_forward",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0295
+        "dx": 0.0686,
+        "dy": -0.0456,
+        "dz": 0.0961
       },
-      "timestamp": 1.5
+      "timestamp": 0.9667
     },
     {
-      "tool": "move_up",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.1676
+        "dx": -0.022,
+        "dy": 0.1631,
+        "dz": -0.0725
       },
-      "timestamp": 1.9333
-    },
-    {
-      "tool": "move_left",
-      "args": {
-        "distance_m": 0.1866
-      },
-      "timestamp": 4.8667
-    },
-    {
-      "tool": "move_down",
-      "args": {
-        "distance_m": 0.0917
-      },
-      "timestamp": 6.3
-    },
-    {
-      "tool": "move_back",
-      "args": {
-        "distance_m": 0.0151
-      },
-      "timestamp": 11.7
+      "timestamp": 3.2
     },
     {
       "tool": "grasp",
@@ -58,84 +45,78 @@
       "timestamp": 13.7
     },
     {
-      "tool": "move_down",
-      "args": {
-        "distance_m": 0.0182
-      },
-      "timestamp": 14.7333
-    },
-    {
       "tool": "release",
       "args": {},
       "timestamp": 16.6
     },
     {
-      "tool": "move_up",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.1022
+        "dx": 0.0048,
+        "dy": 0.0056,
+        "dz": 0.1111
       },
-      "timestamp": 17.4
+      "timestamp": 16.6
     },
     {
-      "tool": "move_left",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.1985
+        "dx": -0.0892,
+        "dy": 0.2066,
+        "dz": -0.0254
       },
-      "timestamp": 19.4
+      "timestamp": 19.1667
     },
     {
-      "tool": "move_back",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0282
+        "dx": -0.034,
+        "dy": 0.006,
+        "dz": -0.0222
       },
-      "timestamp": 22.6667
+      "timestamp": 22.6333
     },
     {
-      "tool": "move_up",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0185
+        "dx": 0.2192,
+        "dy": -0.363,
+        "dz": 0.0545
       },
-      "timestamp": 26.3333
+      "timestamp": 24.1
     },
     {
-      "tool": "move_forward",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0767
+        "dx": -0.1065,
+        "dy": 0.0364,
+        "dz": -0.0779
       },
-      "timestamp": 26.7
+      "timestamp": 30.2333
     },
     {
-      "tool": "move_right",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.3209
+        "dx": -0.0307,
+        "dy": 0.0099,
+        "dz": -0.0379
       },
-      "timestamp": 27.5667
+      "timestamp": 33.9
     },
     {
-      "tool": "move_back",
+      "tool": "move_to_delta",
       "args": {
-        "distance_m": 0.0829
+        "dx": -0.0665,
+        "dy": 0.0156,
+        "dz": 0.0034
       },
-      "timestamp": 30.4333
-    },
-    {
-      "tool": "move_down",
-      "args": {
-        "distance_m": 0.1011
-      },
-      "timestamp": 31.8
-    },
-    {
-      "tool": "move_back",
-      "args": {
-        "distance_m": 0.0903
-      },
-      "timestamp": 34.8
+      "timestamp": 35.6
     }
   ],
   "metadata": {
     "dataset": "sticks_v2",
     "episode": 0,
+    "density": "medium",
     "start_ee_position": {
       "x": 0.1353,
       "y": 0.0318,

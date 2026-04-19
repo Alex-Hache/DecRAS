@@ -80,20 +80,14 @@
 
 ### 6A.2 Segmenter v2 (waypoint-based)
 
-- [ ] **Rewrite segmenter core** — Replace greedy dominant-axis algorithm with waypoint detection. Detect direction changes (angle threshold on velocity vector) + velocity drops + gripper events. Between waypoints, emit one `move_to_delta(dx, dy, dz)`. Gripper events still produce `grasp()`/`release()`.
-  - *Done when*: Segmenter v2 on sticks_v2 produces shorter, more intuitive sequences than v1
-  - *Time*: 45 min
-  - *Tag*: `claude-code`
+- [x] **Rewrite segmenter core** — Replaced greedy dominant-axis algorithm with waypoint detection. Direction changes (windowed velocity-vector angle), speed dips (local minima below fraction of v_max), and gripper events are all waypoints. Between waypoints, emits one `move_to_delta(dx, dy, dz)`. Gripper events still produce `grasp()`/`release()`.
+  - *Done*: sticks_v2 went from 19 v1 primitives (staircase) to 13 v2 primitives at medium / 7 at low — shorter and diagonals stay diagonal.
 
-- [ ] **Add waypoint density parameter** — `--density low|medium|high` controls angle threshold for direction changes. High = many small waypoints (faithful replay). Low = few large waypoints (abstract, more like "intent").
-  - *Done when*: Same episode produces 5 primitives (low) vs 20 primitives (high)
-  - *Time*: 20 min
-  - *Tag*: `claude-code`
+- [x] **Add waypoint density parameter** — `--density low|medium|high` scales angle threshold, dip ratio, and min-segment distance together.
+  - *Done*: sticks_v2 episode 0 produces 7 / 13 / 26 primitives at low / medium / high.
 
-- [ ] **Visualize segmenter output** — Overlay waypoints on the 3D trajectory plot. Each `move_to_delta` is a straight-line segment. Visual check: do the segments approximate the original curve?
-  - *Done when*: matplotlib plot with trajectory + waypoint markers
-  - *Time*: 20 min
-  - *Tag*: `claude-code`
+- [x] **Visualize segmenter output** — `scripts/visualize_trajectory.py --segment --density {low|medium|high}` overlays raw trajectory (faded) + dashed straight-line segments + diamond waypoint markers.
+  - *Done*: segments visually approximate the original curve; low is skeletal, high tracks the curves closely.
 
 ### 6A.3 Test Zero
 

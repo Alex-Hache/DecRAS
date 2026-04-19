@@ -1,0 +1,243 @@
+{
+  "task": "pick stick and place at target",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0448,
+        "dy": -0.0123,
+        "dz": -0.0037
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.016,
+        "dy": -0.0182,
+        "dz": -0.0014
+      },
+      "timestamp": 0.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0082,
+        "dy": -0.035,
+        "dz": 0.0003
+      },
+      "timestamp": 0.3
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0686,
+        "dy": -0.0456,
+        "dz": 0.0961
+      },
+      "timestamp": 0.9667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0054,
+        "dy": -0.004,
+        "dz": 0.0968
+      },
+      "timestamp": 3.2
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0378,
+        "dy": 0.1884,
+        "dz": -0.0725
+      },
+      "timestamp": 4.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0489,
+        "dy": -0.0139,
+        "dz": -0.07
+      },
+      "timestamp": 6.2333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0163,
+        "dy": -0.0074,
+        "dz": -0.0268
+      },
+      "timestamp": 7.4667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.022,
+        "dy": 0.01,
+        "dz": -0.0027
+      },
+      "timestamp": 8.4667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.011,
+        "dy": 0.0163,
+        "dz": 0.0141
+      },
+      "timestamp": 9.5667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.01,
+        "dy": -0.023,
+        "dz": 0.0012
+      },
+      "timestamp": 11.8
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 13.7
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0048,
+        "dy": 0.0005,
+        "dz": -0.0346
+      },
+      "timestamp": 13.7
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0048,
+        "dy": 0.0056,
+        "dz": 0.1111
+      },
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0755,
+        "dy": 0.1907,
+        "dz": -0.0172
+      },
+      "timestamp": 19.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0137,
+        "dy": 0.0159,
+        "dz": -0.0082
+      },
+      "timestamp": 22.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.034,
+        "dy": 0.006,
+        "dz": -0.0222
+      },
+      "timestamp": 22.6333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0095,
+        "dy": -0.0113,
+        "dz": 0.0206
+      },
+      "timestamp": 24.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.2097,
+        "dy": -0.3517,
+        "dz": 0.0339
+      },
+      "timestamp": 26.6667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.1003,
+        "dy": 0.0338,
+        "dz": -0.0049
+      },
+      "timestamp": 30.2333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0075,
+        "dy": 0.0024,
+        "dz": -0.0366
+      },
+      "timestamp": 32.2667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0012,
+        "dy": 0.0002,
+        "dz": -0.0364
+      },
+      "timestamp": 32.9667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0063,
+        "dy": 0.0021,
+        "dz": -0.0227
+      },
+      "timestamp": 33.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0244,
+        "dy": 0.0078,
+        "dz": -0.0152
+      },
+      "timestamp": 34.6333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0665,
+        "dy": 0.0156,
+        "dz": 0.0034
+      },
+      "timestamp": 35.6
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v2",
+    "episode": 0,
+    "density": "high",
+    "start_ee_position": {
+      "x": 0.1353,
+      "y": 0.0318,
+      "z": -0.0119
+    }
+  }
+}
