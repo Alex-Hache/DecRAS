@@ -34,7 +34,7 @@ mcp_server/
   robot/kinematics.py    — placo FK/IK engine (PyBullet DIRECT headless client)
   sim/base.py            — Abstract SimEnvironment (designed for Isaac Sim swap)
   sim/pybullet_env.py    — PyBullet backend
-  perception/camera.py   — Webcam capture (optional, degrades gracefully)
+  perception/camera.py   — Webcam capture (USB int device or IP Webcam URL via CAMERA_SOURCE / DECRAS_CAMERA env; degrades to simulated frames when SIMULATE=true)
   perception/detector.py — Color-based object detection
   perception/scene_graph.py — Scene graph builder
   episode.py             — Episode recorder
@@ -97,7 +97,7 @@ datasets/
 - **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X.
 - **`move_cartesian_delta` rewritten (April 2026)** — was reading mid-motion `get_observation()` between sub-steps and using a fast inner interpolation (200ms) the servo couldn't track. Both bugs caused 30-50% reach. New implementation plans waypoints upfront from FK seed, chains IK seeds, uses convergence-based wait + active-hold. Reach now 80-95% on horizontal/down moves.
 - **+Z up moves limited to 25-50% reach** — Feetech servo torque insufficient to lift arm against gravity to IK target. Tracked in BACKLOG (Z-up gravity compensation task).
-- Camera/perception pipeline not tested on real hardware yet
+- Camera pipeline live-tested with IP Webcam on phone (April 2026): 1920×1080 frames from `http://192.168.129.1:8080/video`. Detector runs end-to-end. Real-scene detector tuning (HSV ranges for actual lab objects, not demo red cup / blue plate) not yet done.
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
 
@@ -172,7 +172,7 @@ All 8 motion primitives hardware-validated (March 2026):
 - **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
 
 **Phase 6B — Full Loop (NEXT)**:
-- Camera setup (IP Webcam on phone) + wire into perception pipeline
+- ~~Camera setup (IP Webcam on phone) + wire into perception pipeline~~ — DONE (phone MJPEG stream, `DECRAS_CAMERA` env var, live-tested)
 - LLM observe-think-act loop end-to-end on real hardware
 - Analyze LLM failure modes
 - First RAG experiment: inject demo sequence as few-shot example

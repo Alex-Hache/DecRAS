@@ -106,14 +106,9 @@
 
 ### 6B.1 Camera setup
 
-- [ ] **Install IP Webcam on phone** — Android app, connect to same WiFi as robot PC. Note stream URL (`http://<phone-ip>:8080/video`).
-  - *Done when*: Stream URL opens in browser with live video
-  - *Time*: 10 min
+- [x] **Install IP Webcam on phone** — DONE (2026-04-19): stream at `http://192.168.129.1:8080/video`, verified returning 1920×1080 BGR frames.
 
-- [ ] **Wire phone camera into perception pipeline** — Update `perception/camera.py` to accept an IP Webcam URL as input source (alongside USB webcam). Scene graph builder should work unchanged.
-  - *Done when*: `observe()` MCP tool returns scene graph with detected objects via phone camera
-  - *Time*: 30 min
-  - *Tag*: `claude-code`
+- [x] **Wire phone camera into perception pipeline** — DONE (2026-04-19): `Camera(source)` accepts int (USB) or string URL; bare `host:port` normalized to `http://host:port/video`. `CAMERA_SOURCE` in `config.py` reads `DECRAS_CAMERA` env var (digits → int, else URL). `.mcp.json` sets `DECRAS_CAMERA=192.168.129.1:8080`. Live test: `Camera(CAMERA_SOURCE).capture()` returns a real frame from the phone; detector runs without error.
 
 ### 6B.2 LLM loop end-to-end
 

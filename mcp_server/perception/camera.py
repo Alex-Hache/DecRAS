@@ -1,4 +1,10 @@
-"""Webcam capture and frame buffering."""
+"""Webcam capture and frame buffering.
+
+``Camera`` accepts either:
+  - int   — OpenCV USB device index (``Camera(0)``)
+  - str   — an IP Webcam MJPEG stream URL (``Camera("http://192.168.129.1:8080/video")``)
+            Bare ``host:port`` is accepted and normalized to ``http://host:port/video``.
+"""
 
 import logging
 import numpy as np
@@ -13,9 +19,31 @@ except ImportError:
     logger.warning("opencv-python not installed — camera will use simulated frames")
 
 
+def normalize_camera_source(source: int | str) -> int | str:
+    """Pass ints through; coerce string URLs into a form OpenCV can open.
+
+    Rules for strings:
+      - If it already has a scheme (``http://``/``https://``/``rtsp://``), leave it.
+      - Otherwise prepend ``http://``.
+      - If no path is provided (just ``host:port``), append ``/video`` (IP Webcam default MJPEG endpoint).
+    """
+    if isinstance(source, int):
+        return source
+    s = str(source).strip()
+    if not s:
+        raise ValueError("Camera source string is empty")
+    lower = s.lower()
+    if not (lower.startswith("http://") or lower.startswith("https://") or lower.startswith("rtsp://")):
+        s = "http://" + s
+    scheme, _, rest = s.partition("://")
+    if "/" not in rest:
+        s = f"{scheme}://{rest}/video"
+    return s
+
+
 class Camera:
-    def __init__(self, device_id: int = 0):
-        self._device_id = device_id
+    def __init__(self, source: int | str = 0):
+        self._source = normalize_camera_source(source)
         self._cap = None
         self._last_frame: np.ndarray | None = None
 
@@ -25,10 +53,13 @@ class Camera:
             logger.info("Camera running in SIMULATE mode")
 
     def _open(self):
-        self._cap = cv2.VideoCapture(self._device_id)
+        self._cap = cv2.VideoCapture(self._source)
         if not self._cap.isOpened():
-            raise RuntimeError(f"Cannot open camera device {self._device_id}")
-        logger.info("Camera opened on device %d", self._device_id)
+            raise RuntimeError(f"Cannot open camera source {self._source!r}")
+        if isinstance(self._source, str):
+            # Minimize latency on HTTP streams — we always want the newest frame, not a backlog.
+            self._cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        logger.info("Camera opened on source %r", self._source)
 
     def capture(self) -> np.ndarray:
         """Capture a single frame. Returns BGR numpy array."""

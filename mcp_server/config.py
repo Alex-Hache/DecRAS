@@ -21,6 +21,18 @@ OBJECTS = {
 # Camera-to-robot affine transform (populate during calibration)
 CAMERA_TO_ROBOT_MATRIX = None  # 3x3 affine, set by calibration script
 
+# Camera source: int for USB device index, str for IP Webcam URL.
+# Override via env var DECRAS_CAMERA, e.g. DECRAS_CAMERA=192.168.129.1:8080
+#   — bare host:port is normalized to http://host:port/video by Camera().
+#   — integers are parsed as USB device indices.
+_camera_env = os.environ.get("DECRAS_CAMERA", "").strip()
+if _camera_env == "":
+    CAMERA_SOURCE: int | str = 0
+elif _camera_env.isdigit():
+    CAMERA_SOURCE = int(_camera_env)
+else:
+    CAMERA_SOURCE = _camera_env
+
 # Robot workspace limits (meters, in robot frame)
 WORKSPACE = {
     "x_min": 0.0,

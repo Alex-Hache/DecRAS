@@ -6,7 +6,8 @@
       "cwd": "/home/alexandre/IA/DecRAS",
       "env": {
         "SIMULATE": "false",
-        "LEROBOT_FOLLOWER_PORT": "/dev/decras_follower"
+        "LEROBOT_FOLLOWER_PORT": "/dev/decras_follower",
+        "DECRAS_CAMERA": "192.168.129.1:8080"
       }
     }
   }

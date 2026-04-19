@@ -44,9 +44,10 @@ def collect_points_interactive() -> tuple[np.ndarray, np.ndarray]:
 
     Returns (pixel_points, robot_points) as Nx2 and Nx2 arrays.
     """
+    from mcp_server.config import CAMERA_SOURCE
     from mcp_server.perception.camera import Camera
 
-    camera = Camera()
+    camera = Camera(CAMERA_SOURCE)
     pixel_points = []
     robot_points = []
     click_pos = [None]

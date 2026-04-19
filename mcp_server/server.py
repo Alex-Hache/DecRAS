@@ -63,8 +63,9 @@ def _get_camera():
         return None
     try:
         from mcp_server.perception.camera import Camera
-        camera = Camera()
-        logger.info("Camera opened")
+        from mcp_server.config import CAMERA_SOURCE
+        camera = Camera(CAMERA_SOURCE)
+        logger.info("Camera opened (source=%r)", CAMERA_SOURCE)
     except Exception as e:
         logger.warning("Camera not available: %s", e)
     return camera
