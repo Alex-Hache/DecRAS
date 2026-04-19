@@ -47,7 +47,7 @@ llm_controller/
   config.py              — LLM settings
   mcp_client.py          — MCP stdio client
 
-tests/                   — pytest test suite (55 tests)
+tests/                   — pytest test suite (67 tests)
   test_config.py         — Config validation
   test_history.py        — Position history buffer
   test_episode.py        — Episode recording
@@ -159,9 +159,9 @@ All 8 motion primitives hardware-validated (March 2026):
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
 **Phase 6A — move_to_delta + Segmenter v2 (CURRENT)**:
-- ✅ `move_to_delta(dx, dy, dz)` added — diagonal 3D EE move in one IK call
-- ✅ Axis-aligned primitives refactored as one-liner aliases to `move_to_delta`
-- Rewrite segmenter: waypoint-based instead of greedy dominant-axis (next)
+- ~~Add `move_to_delta(dx, dy, dz)` primitive~~ — DONE: diagonal moves in a single IK call
+- ~~Refactor axis-aligned primitives as aliases~~ — DONE: `move_left` etc. are now documented aliases of `move_to_delta`
+- Rewrite segmenter: waypoint-based instead of greedy dominant-axis
 - **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
 
 **Phase 6B — Full Loop (NEXT)**:

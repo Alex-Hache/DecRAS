@@ -418,26 +418,26 @@ def _joint_move(joint_deltas: dict, action_name: str, action_args: dict) -> str:
 
 @mcp.tool()
 @_safe_tool
-def move_to_delta(dx: float = 0.0, dy: float = 0.0, dz: float = 0.0) -> str:
-    """Move gripper by a 3D Cartesian delta vector in the robot base frame (meters).
+def move_to_delta(dx: float, dy: float, dz: float) -> str:
+    """Move gripper by a relative displacement in robot base frame (meters).
 
-    Allows diagonal moves in a single IK call. The axis-aligned primitives
-    (move_left, move_forward, etc.) are convenience aliases for this tool.
-
-    Frame: +X = forward (away from base), +Y = left, +Z = up.
+    Supports diagonal moves in a single call — more faithful than chaining
+    axis-aligned primitives. Frame: +X = forward, +Y = left, +Z = up.
 
     Args:
-        dx: X displacement in meters (+forward / -back)
-        dy: Y displacement in meters (+left / -right)
-        dz: Z displacement in meters (+up / -down)
+        dx: Displacement along X axis in meters (positive = forward)
+        dy: Displacement along Y axis in meters (positive = left)
+        dz: Displacement along Z axis in meters (positive = up)
     """
     return _cartesian_move(dx, dy, dz, "move_to_delta", {"dx": dx, "dy": dy, "dz": dz})
 
 
+# ── Axis-aligned aliases — convenience wrappers around move_to_delta ──
+
 @mcp.tool()
 @_safe_tool
 def move_left(distance_m: float = 0.05) -> str:
-    """Move gripper left (+Y) in robot base frame.
+    """Move gripper left (+Y). Alias for move_to_delta(0, +d, 0).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
@@ -448,7 +448,7 @@ def move_left(distance_m: float = 0.05) -> str:
 @mcp.tool()
 @_safe_tool
 def move_right(distance_m: float = 0.05) -> str:
-    """Move gripper right (-Y) in robot base frame.
+    """Move gripper right (-Y). Alias for move_to_delta(0, -d, 0).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
@@ -459,7 +459,7 @@ def move_right(distance_m: float = 0.05) -> str:
 @mcp.tool()
 @_safe_tool
 def move_up(distance_m: float = 0.05) -> str:
-    """Move gripper up (+Z direction).
+    """Move gripper up (+Z). Alias for move_to_delta(0, 0, +d).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
@@ -470,7 +470,7 @@ def move_up(distance_m: float = 0.05) -> str:
 @mcp.tool()
 @_safe_tool
 def move_down(distance_m: float = 0.05) -> str:
-    """Move gripper down (-Z direction).
+    """Move gripper down (-Z). Alias for move_to_delta(0, 0, -d).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
@@ -481,7 +481,7 @@ def move_down(distance_m: float = 0.05) -> str:
 @mcp.tool()
 @_safe_tool
 def move_forward(distance_m: float = 0.05) -> str:
-    """Move gripper forward (+X, away from robot base).
+    """Move gripper forward (+X). Alias for move_to_delta(+d, 0, 0).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)
@@ -492,7 +492,7 @@ def move_forward(distance_m: float = 0.05) -> str:
 @mcp.tool()
 @_safe_tool
 def move_back(distance_m: float = 0.05) -> str:
-    """Move gripper backward (-X, toward robot base).
+    """Move gripper backward (-X). Alias for move_to_delta(-d, 0, 0).
 
     Args:
         distance_m: Distance in meters (default 0.05 = 5 cm)

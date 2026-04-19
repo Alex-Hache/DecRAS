@@ -60,8 +60,14 @@
 ### 6A.1 Add `move_to_delta` primitive
 
 - [x] **Implement `move_to_delta(dx, dy, dz)` in server.py** — Read current joints → FK → add delta vector → IK → send joints. Single tool call, diagonal movement. Existing axis-aligned primitives (`move_left`, etc.) become thin wrappers that call `move_to_delta` internally.
+  - *Done when*: `move_to_delta(0.05, -0.03, 0.0)` moves the arm diagonally in sim, tests pass
+  - *Time*: 30 min
+  - *Tag*: `claude-code`
 
 - [x] **Refactor axis-aligned primitives as aliases** — `move_left(d)` → `move_to_delta(0, d, 0)`, etc. Keep the old tool names registered (LLM still uses them), but the implementation is a one-liner.
+  - *Done when*: All existing tests still pass, axis-aligned tools call `move_to_delta` internally
+  - *Time*: 20 min
+  - *Tag*: `claude-code`
 
 - [ ] **Hardware validation** — Test `move_to_delta` on the real arm. Diagonal move (e.g. 5cm forward + 3cm down) should trace a straight line, not a staircase.
   - *Done when*: Visual confirmation on hardware
