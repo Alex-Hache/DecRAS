@@ -70,13 +70,17 @@ scripts/
   replay_teleop.py       — Replay recorded episode on follower hardware
   visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors; --segment --density {low|medium|high} overlays segmenter v2 waypoints + straight-line segments
   segment_trajectory.py  — Segmenter v2 (waypoint-based): direction changes + speed dips + gripper events → one move_to_delta per segment; --density tunes granularity (low~5, medium~13, high~26 primitives on sticks_v2)
+  add_demo.py            — Thin CLI that wraps segmenter output + task as a Demo and writes it to the store (decras.imitation.store.ingest_sequence)
 
 calibration/
   record_grid.py         — Interactive calibration grid recorder (leader+follower teleop, manual xyz input, resume support)
 
 decras/
   imitation/
-    retrieval.py         — Demo store schema (Demo, Primitive, DemoMetadata dataclasses)
+    retrieval.py         — Demo store schema (Demo, Primitive, DemoMetadata dataclasses, to_dict/from_dict)
+    store.py             — Demo store writer: save_demo/load_demo/list_demos/ingest_sequence; deterministic id <dataset>_ep<NNN>_<density>
+
+demos/                   — Demo store (one JSON per ingested segmenter output)
 
 datasets/
   sticks_v1/             — 5 teleop episodes, task: "pick stick and place at target"
@@ -174,7 +178,9 @@ All 8 motion primitives hardware-validated (March 2026):
 - First RAG experiment: inject demo sequence as few-shot example
 
 **Phase 6C — Demo Store & Retrieval (AFTER 6A+6B)**:
-- Demo store writer + retriever + RAG integration + more demos + fine-tuning data
+- ~~Demo store schema~~ — DONE (retrieval.py dataclasses)
+- ~~Demo store writer~~ — DONE (`decras.imitation.store`, CLI at `scripts/add_demo.py`, `demos/` at project root)
+- Retriever (TF-IDF / embedding cosine on task strings) + RAG integration + more demos + fine-tuning data
 
 ### Phase 7 — Memory & Context
 

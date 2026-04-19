@@ -12,29 +12,24 @@ Each demonstration is stored as one JSON file per episode with this structure::
         ],
         "metadata": {
             "dataset": "sticks_v1",
-            "episode": 3
+            "episode": 3,
+            "density": "medium",
+            "start_ee_position": {"x": 0.19, "y": 0.05, "z": 0.12},
+            "created_at": "2026-04-19T10:12:00+00:00",
+            "source_sequence_path": "datasets/sticks_v1/sequences/episode_003.json",
+            "segmenter_git_sha": "c67b970"
         }
     }
 
-Fields
-------
-task : str
-    Natural-language description of the demonstrated task. Used as the
-    retrieval key when selecting few-shot examples for the LLM planner.
-primitives : list[Primitive]
-    Ordered sequence of MCP tool calls that the segmenter extracted from the
-    continuous demonstration trajectory.  Each entry contains:
-      - tool:      name of the MCP primitive (must match a server.py tool)
-      - args:      keyword arguments passed to the tool (may be empty)
-      - timestamp: seconds from episode start when this primitive begins
-metadata : DemoMetadata
-    Provenance information so we can trace a stored demo back to its source
-    recording.  Contains the LeRobot dataset name and episode index.
+Only ``dataset`` and ``episode`` are required in metadata; the rest are
+populated by the ingest pipeline (``decras.imitation.store``) and carry
+provenance information (when/where/which version of the segmenter produced
+this demo).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any
 
 
@@ -46,6 +41,17 @@ class Primitive:
     args: dict[str, Any]
     timestamp: float
 
+    def to_dict(self) -> dict[str, Any]:
+        return {"tool": self.tool, "args": dict(self.args), "timestamp": self.timestamp}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Primitive":
+        return cls(
+            tool=data["tool"],
+            args=dict(data.get("args", {})),
+            timestamp=float(data["timestamp"]),
+        )
+
 
 @dataclass
 class DemoMetadata:
@@ -53,6 +59,26 @@ class DemoMetadata:
 
     dataset: str
     episode: int
+    density: str | None = None
+    start_ee_position: dict[str, float] | None = None
+    created_at: str | None = None
+    source_sequence_path: str | None = None
+    segmenter_git_sha: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"dataset": self.dataset, "episode": self.episode}
+        for f in fields(self):
+            if f.name in ("dataset", "episode"):
+                continue
+            value = getattr(self, f.name)
+            if value is not None:
+                out[f.name] = value
+        return out
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "DemoMetadata":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
 
 
 @dataclass
@@ -61,4 +87,21 @@ class Demo:
 
     task: str
     primitives: list[Primitive] = field(default_factory=list)
-    metadata: DemoMetadata = field(default_factory=lambda: DemoMetadata(dataset="", episode=0))
+    metadata: DemoMetadata = field(
+        default_factory=lambda: DemoMetadata(dataset="", episode=0)
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "task": self.task,
+            "primitives": [p.to_dict() for p in self.primitives],
+            "metadata": self.metadata.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Demo":
+        return cls(
+            task=data["task"],
+            primitives=[Primitive.from_dict(p) for p in data.get("primitives", [])],
+            metadata=DemoMetadata.from_dict(data.get("metadata", {})),
+        )

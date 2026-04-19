@@ -1,0 +1,129 @@
+{
+  "task": "pick stick and place at target",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0534,
+        "dy": -0.0156,
+        "dz": -0.0045
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0007,
+        "dy": -0.0499,
+        "dz": -0.0003
+      },
+      "timestamp": 0.2
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0686,
+        "dy": -0.0456,
+        "dz": 0.0961
+      },
+      "timestamp": 0.9667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.022,
+        "dy": 0.1631,
+        "dz": -0.0725
+      },
+      "timestamp": 3.2
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 13.7
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0048,
+        "dy": 0.0056,
+        "dz": 0.1111
+      },
+      "timestamp": 16.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0892,
+        "dy": 0.2066,
+        "dz": -0.0254
+      },
+      "timestamp": 19.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.034,
+        "dy": 0.006,
+        "dz": -0.0222
+      },
+      "timestamp": 22.6333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.2192,
+        "dy": -0.363,
+        "dz": 0.0545
+      },
+      "timestamp": 24.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.1065,
+        "dy": 0.0364,
+        "dz": -0.0779
+      },
+      "timestamp": 30.2333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0307,
+        "dy": 0.0099,
+        "dz": -0.0379
+      },
+      "timestamp": 33.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0665,
+        "dy": 0.0156,
+        "dz": 0.0034
+      },
+      "timestamp": 35.6
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v2",
+    "episode": 0,
+    "density": "medium",
+    "start_ee_position": {
+      "x": 0.1353,
+      "y": 0.0318,
+      "z": -0.0119
+    },
+    "created_at": "2026-04-19T20:37:40+00:00",
+    "source_sequence_path": "datasets/sticks_v2/sequences/episode_000.json",
+    "segmenter_git_sha": "c67b970"
+  }
+}

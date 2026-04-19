@@ -140,7 +140,7 @@
 
 - [x] **Design demo store schema** — `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses.
 
-- [ ] **Build demo store writer** — Segmenter v2 output + task string → Demo JSON on disk.
+- [x] **Build demo store writer** — Segmenter v2 output + task string → Demo JSON on disk. Store at `demos/` with deterministic id `<dataset>_ep<NNN>_<density>.json`. `decras.imitation.store` has `save_demo` / `load_demo` / `list_demos` / `ingest_sequence`. CLI: `uv run python -m scripts.add_demo <sequence.json> --task "..."`. Duplicates raise unless `--overwrite`. Provenance fields added at ingest: `created_at`, `source_sequence_path`, `segmenter_git_sha`.
   - *Tag*: `claude-code`
 
 - [ ] **Build demo retriever** — TF-IDF or sentence-transformer cosine similarity on task descriptions. `retrieve("pick up the stick") → [demo_1, demo_3]`.
