@@ -69,10 +69,14 @@
   - *Time*: 20 min
   - *Tag*: `claude-code`
 
-- [ ] **Hardware validation** — Test `move_to_delta` on the real arm. Diagonal move (e.g. 5cm forward + 3cm down) should trace a straight line, not a staircase.
-  - *Done when*: Visual confirmation on hardware
-  - *Time*: 15 min
-  - *Tag*: `hardware`
+- [x] **Hardware validation** — Test `move_to_delta` on the real arm. Diagonal move (e.g. 5cm forward + 3cm down) should trace a straight line, not a staircase.
+  - *Done 2026-04-19*: Validated on hardware via `move_to_delta_validation.ipynb`. Diagonal XZ (+5cm X, -3cm Z) reaches 87% on X (was 35% before fix). Y axis perfect (~1mm error). Down moves accurate. Bug found and fixed in `move_cartesian_delta`: was reading mid-motion `get_observation()` between sub-steps + 200ms inner interpolation too fast for servo. Rewrote to plan all waypoints upfront from FK seed, chain IK seeds, use convergence-based wait + active-hold final pose. Residual ~6mm error is gravity sag (bounded).
+  - *Known limit*: +Z up moves only reach ~25-50% (servo torque limit, not software). Filed as 6A.1.x below.
+
+- [ ] **Z-up gravity compensation** *(follow-up to 6A.1 hardware validation)* — +Z up moves only reach 25-50% of commanded distance because Feetech servos can't generate enough torque to lift the arm against gravity to the IK target. Mitigations to try: (a) longer active-hold duration for Z+ moves, (b) over-shoot the IK target by an empirical offset, (c) gravity feed-forward in the IK seed.
+  - *Done when*: +Z 5cm up reaches >80% on hardware
+  - *Time*: 30-60 min
+  - *Tag*: `hardware`, `independent` (doesn't block segmenter v2)
 
 ### 6A.2 Segmenter v2 (waypoint-based)
 

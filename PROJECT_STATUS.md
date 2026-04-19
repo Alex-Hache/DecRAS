@@ -13,6 +13,7 @@ The core thesis: split reasoning (LLM) from execution (MCP primitives) from perc
 
 - **MCP server** with 21 tools: `observe`, `move_to`, `move_to_delta`, `grasp`, `release`, `stop`, `go_back`, `get_status`, `calibrate`, `read_joints`, `send_joints`, `start_episode`, `end_episode`, `move_left`, `move_right`, `move_up`, `move_down`, `move_forward`, `move_back`, `rotate_gripper`, `tilt_gripper`
   - `move_to_delta(dx, dy, dz)` — diagonal 3D EE move in a single IK call; axis-aligned primitives are now aliases
+  - **Hardware validated April 2026**: traces clean diagonals to within ~6mm (gravity sag floor). Implementation rewritten to plan all sub-waypoints upfront from FK seed, chain IK seeds, use convergence-based wait, and active-hold the final pose against droop.
 - **Real hardware control** via LeRobot v0.4 SDK — SO-101 follower arm connects, calibrates, reads joints, moves, grasps
 - **PyBullet simulation** with real SO-101 URDF + STL meshes — full pick-and-place verified
 - **MCP-to-Claude integration** — Claude Code can call tools on the real robot via `.mcp.json` (uses `sg dialout` for serial permissions)
@@ -90,6 +91,8 @@ datasets/
 ### Known Limitations
 
 - **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X.
+- **`move_cartesian_delta` rewritten (April 2026)** — was reading mid-motion `get_observation()` between sub-steps and using a fast inner interpolation (200ms) the servo couldn't track. Both bugs caused 30-50% reach. New implementation plans waypoints upfront from FK seed, chains IK seeds, uses convergence-based wait + active-hold. Reach now 80-95% on horizontal/down moves.
+- **+Z up moves limited to 25-50% reach** — Feetech servo torque insufficient to lift arm against gravity to IK target. Tracked in BACKLOG (Z-up gravity compensation task).
 - Camera/perception pipeline not tested on real hardware yet
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`

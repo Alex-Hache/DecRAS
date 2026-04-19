@@ -198,12 +198,53 @@ class LeRobotInterface:
             logger.warning("FK failed: %s — returning cached position", e)
             return self._position[:]
 
+    def _wait_until_settled(
+        self,
+        target_joints: dict[str, float],
+        tolerance_deg: float = 2.0,
+        max_wait_s: float = 0.5,
+        resend_interval_s: float = 0.02,
+    ) -> bool:
+        """Block until arm is within `tolerance_deg` of `target_joints` on every joint.
+
+        Re-sends the setpoint each iteration to actively fight gravity droop.
+        Returns True if convergence reached, False on timeout.
+        """
+        if SIMULATE:
+            return True
+        start = time.time()
+        action = {f"{name}.pos": val for name, val in target_joints.items()}
+        while time.time() - start < max_wait_s:
+            current = self.get_joint_positions()
+            max_err = max(
+                abs(current.get(name, 0.0) - target_joints[name])
+                for name in target_joints
+            )
+            if max_err < tolerance_deg:
+                return True
+            self._robot.send_action(action)  # re-assert against droop
+            time.sleep(resend_interval_s)
+        return False
+
+    def _active_hold(self, target_joints: dict[str, float], duration_s: float = 0.6) -> None:
+        """Repeatedly send the setpoint for `duration_s` to lock in the final pose."""
+        if SIMULATE:
+            return
+        action = {f"{name}.pos": val for name, val in target_joints.items()}
+        end = time.time() + duration_s
+        while time.time() < end:
+            self._robot.send_action(action)
+            time.sleep(0.05)
+
     def move_to(self, x: float, y: float, z: float, velocity: str = "normal") -> dict:
-        """Move end-effector to Cartesian position via IK.
+        """Move end-effector to a Cartesian target via IK.
+
+        Single setpoint + convergence-based wait. The `velocity` argument is
+        kept for API compatibility but only adjusts the convergence budget.
 
         Args:
             x, y, z: Target in robot base frame (meters).
-            velocity: "slow" | "normal" | "fast"
+            velocity: "slow" | "normal" | "fast" — affects max wait time only.
         """
         x, y, z = self._clamp_to_workspace(x, y, z)
 
@@ -221,15 +262,8 @@ class LeRobotInterface:
             joint_targets = cartesian_to_joints(x, y, z, seed_hw_joints=current)
             joint_targets["gripper"] = current.get("gripper", GRIPPER_OPEN)
 
-            steps = {"slow": 20, "normal": 10, "fast": 5}.get(velocity, 10)
-            for i in range(1, steps + 1):
-                alpha = i / steps
-                interp = {
-                    name: current.get(name, 0.0) + alpha * (joint_targets[name] - current.get(name, 0.0))
-                    for name in JOINT_NAMES
-                }
-                self.send_joint_positions(interp)
-                time.sleep(0.02)
+            max_wait = {"slow": 1.0, "normal": 0.5, "fast": 0.25}.get(velocity, 0.5)
+            self._wait_until_settled(joint_targets, max_wait_s=max_wait)
 
             self._position = [x, y, z]
             self._last_action = "move_to"
@@ -241,30 +275,70 @@ class LeRobotInterface:
             return {"status": "failed", "reason": str(e)}
 
     def move_cartesian_delta(self, dx: float, dy: float, dz: float, velocity: str = "normal") -> dict:
-        """Move end-effector by a Cartesian delta (meters), using FK + IK.
+        """Move end-effector by a Cartesian delta (meters) along a straight line.
 
-        Sub-steps the move in Cartesian space so each IK solve covers at most
-        MAX_CARTESIAN_STEP_M — prevents large joint jumps on long moves.
+        Plans all sub-waypoints UPFRONT from the current FK seed (not from
+        mid-motion observations), chains IK seeds, executes each setpoint
+        with convergence wait, and active-holds the final pose to counter
+        gravity droop.
         """
+        if SIMULATE:
+            current = self.get_ee_position()
+            return self.move_to(current[0] + dx, current[1] + dy, current[2] + dz, velocity)
+
         MAX_CARTESIAN_STEP_M = 0.03  # 3 cm per IK solve
 
-        total = (dx ** 2 + dy ** 2 + dz ** 2) ** 0.5
-        n_steps = max(1, int(total / MAX_CARTESIAN_STEP_M) + 1)
+        try:
+            from mcp_server.robot.kinematics import joints_to_cartesian, cartesian_to_joints
 
-        result = {"status": "complete"}
-        for _ in range(n_steps):
-            current_pos = self.get_ee_position()
-            sub_target = [
-                current_pos[0] + dx / n_steps,
-                current_pos[1] + dy / n_steps,
-                current_pos[2] + dz / n_steps,
+            # 1. Snapshot starting joints — single read, before ANY motion
+            start_joints = self.get_joint_positions()
+            gripper_pos = start_joints.get("gripper", GRIPPER_OPEN)
+            start_arm = {k: v for k, v in start_joints.items() if k != "gripper"}
+
+            # 2. FK seed (NOT hardware reading — avoids gravity sag in the plan)
+            start_ee = joints_to_cartesian(start_arm)
+
+            # 3. Plan all waypoints upfront in Cartesian
+            total = (dx ** 2 + dy ** 2 + dz ** 2) ** 0.5
+            n_steps = max(1, int(total / MAX_CARTESIAN_STEP_M) + 1)
+            waypoints = [
+                (
+                    start_ee[0] + dx * (i + 1) / n_steps,
+                    start_ee[1] + dy * (i + 1) / n_steps,
+                    start_ee[2] + dz * (i + 1) / n_steps,
+                )
+                for i in range(n_steps)
             ]
-            result = self.move_to(sub_target[0], sub_target[1], sub_target[2], velocity)
-            if result.get("status") != "complete":
-                return result
+            # Clamp each waypoint to the workspace
+            waypoints = [self._clamp_to_workspace(*wp) for wp in waypoints]
 
-        result["ee_position"] = self.get_ee_position()
-        return result
+            # 4. Chain IK from previous IK solution (NOT from observation)
+            seed = dict(start_arm)
+            ik_plan = []
+            for wp in waypoints:
+                ik = cartesian_to_joints(wp[0], wp[1], wp[2], seed_hw_joints=seed)
+                ik["gripper"] = gripper_pos
+                ik_plan.append(ik)
+                seed = {k: v for k, v in ik.items() if k != "gripper"}
+
+            # 5. Execute: send each waypoint, wait for convergence
+            max_wait = {"slow": 1.0, "normal": 0.5, "fast": 0.25}.get(velocity, 0.5)
+            for ik in ik_plan:
+                self._wait_until_settled(ik, max_wait_s=max_wait)
+
+            # 6. Active-hold the final pose against gravity droop
+            self._active_hold(ik_plan[-1], duration_s=0.6)
+
+            ee_final = self.get_ee_position()
+            self._position = list(ee_final)
+            self._last_action = "move_cartesian_delta"
+            self._last_status = "complete"
+            return {"status": "complete", "ee_position": ee_final}
+        except Exception as e:
+            self._last_action = "move_cartesian_delta"
+            self._last_status = "failed"
+            return {"status": "failed", "reason": str(e)}
 
     def grasp(self, force: float = 3.0) -> dict:
         """Close gripper.
