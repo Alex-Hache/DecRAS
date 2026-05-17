@@ -1,0 +1,225 @@
+{
+  "task": "",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0465,
+        "dy": -0.0108,
+        "dz": -0.0033
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0108,
+        "dy": -0.022,
+        "dz": -0.0033
+      },
+      "timestamp": 0.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0118,
+        "dy": -0.0231,
+        "dz": -0.0026
+      },
+      "timestamp": 0.3333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.035,
+        "dy": -0.0072,
+        "dz": 0.0205
+      },
+      "timestamp": 1.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0006,
+        "dy": 0.0154,
+        "dz": 0.0744
+      },
+      "timestamp": 2.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0068,
+        "dy": 0.0186,
+        "dz": 0.01
+      },
+      "timestamp": 3.7333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0512,
+        "dy": -0.0037,
+        "dz": 0.0654
+      },
+      "timestamp": 4.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0208,
+        "dy": -0.0096,
+        "dz": -0.0002
+      },
+      "timestamp": 6.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0118,
+        "dy": -0.0018,
+        "dz": -0.028
+      },
+      "timestamp": 6.4667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0354,
+        "dy": -0.0021,
+        "dz": -0.0188
+      },
+      "timestamp": 6.8667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.088,
+        "dy": 0.0732,
+        "dz": -0.095
+      },
+      "timestamp": 7.4333
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0225,
+        "dy": 0.0065,
+        "dz": -0.0135
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0055,
+        "dy": 0.0035,
+        "dz": -0.0219
+      },
+      "timestamp": 10.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0183,
+        "dy": 0.0062,
+        "dz": 0.0529
+      },
+      "timestamp": 11.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0039,
+        "dy": 0.0097,
+        "dz": 0.0214
+      },
+      "timestamp": 12.8333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.1184,
+        "dy": 0.1213,
+        "dz": 0.0422
+      },
+      "timestamp": 13.0333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0167,
+        "dy": 0.009,
+        "dz": -0.0131
+      },
+      "timestamp": 14.2667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0069,
+        "dy": -0.0336,
+        "dz": -0.0538
+      },
+      "timestamp": 14.5333
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.1742,
+        "dy": -0.1655,
+        "dz": 0.1331
+      },
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0038,
+        "dy": -0.023,
+        "dz": -0.0044
+      },
+      "timestamp": 19.6
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0811,
+        "dy": -0.0102,
+        "dz": -0.1674
+      },
+      "timestamp": 19.8333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0641,
+        "dy": 0.018,
+        "dz": 0.0037
+      },
+      "timestamp": 22.6333
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v3",
+    "episode": 0,
+    "density": "custom(angle=20.0,dip=0.2,min_dist=0.022)",
+    "start_ee_position": {
+      "x": 0.1699,
+      "y": 0.0411,
+      "z": -0.0001
+    }
+  }
+}

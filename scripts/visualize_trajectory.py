@@ -106,9 +106,9 @@ def plot_trajectories(
         print(f"  Episode {ep_num}: {len(ep_df)} frames — running FK...", flush=True)
 
         if segment:
-            ee, gripper, timestamps = compute_ee_trajectory(ep_df)
+            ee, gripper, wrist_roll, timestamps = compute_ee_trajectory(ep_df)
             prims, smooth_ee, waypoints, grasp_f, release_f = segment_episode_with_waypoints(
-                ee, gripper, timestamps, density=density
+                ee, gripper, wrist_roll, timestamps, density=density
             )
 
             # Raw trajectory (faded)

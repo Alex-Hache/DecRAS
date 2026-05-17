@@ -71,6 +71,7 @@ scripts/
   visualize_trajectory.py — FK over Parquet frames → 3D matplotlib EE path, per-episode colors; --segment --density {low|medium|high} overlays segmenter v2 waypoints + straight-line segments
   segment_trajectory.py  — Segmenter v2 (waypoint-based): direction changes + speed dips + gripper events → one move_to_delta per segment; --density tunes granularity (low~5, medium~13, high~26 primitives on sticks_v2)
   add_demo.py            — Thin CLI that wraps segmenter output + task as a Demo and writes it to the store (decras.imitation.store.ingest_sequence)
+  replay_sequence.py     — Replay a segmenter sequence JSON on real hardware: reads starting joints from Parquet, executes via LeRobotInterface (SIMULATE=false baked in); --density / --seq flags
 
 calibration/
   record_grid.py         — Interactive calibration grid recorder (leader+follower teleop, manual xyz input, resume support)
@@ -96,7 +97,8 @@ datasets/
 
 - **placo FK/IK `.pos` suffix bug fixed (April 2026)** — `joints_to_cartesian()` and `cartesian_to_joints()` silently ignored input joint angles due to key name mismatch (`.pos` suffix from LeRobot). Fixed via `_normalize_joint_dict()`. FK/IK now produces correct results, validated with 10cm XY square on hardware. Remaining concern: IK still changes wrist_flex during EE-space moves → Z drop when moving in X.
 - **`move_cartesian_delta` rewritten (April 2026)** — was reading mid-motion `get_observation()` between sub-steps and using a fast inner interpolation (200ms) the servo couldn't track. Both bugs caused 30-50% reach. New implementation plans waypoints upfront from FK seed, chains IK seeds, uses convergence-based wait + active-hold. Reach now 80-95% on horizontal/down moves.
-- **+Z up moves limited to 25-50% reach** — Feetech servo torque insufficient to lift arm against gravity to IK target. Tracked in BACKLOG (Z-up gravity compensation task).
+- **Gravity sag — the real blocker for replay fidelity** — Extended-arm segments (especially post-release retreat) drift significantly due to servo torque insufficient to hold the arm against gravity. Causes ~2-5cm position error accumulating across 19-49 primitives. Z-up moves reach only 25-50% of commanded distance. Gravity compensation (empirical Z overshoot or feed-forward torque) is the next hardware task before Phase 6D recording.
+- **Gripper recording fidelity** — sticks_v3 gripper range is 0.7-17.1/100 (barely moves). Meaningful dgripper replay requires recordings with deliberate full open/close cycles. Record 6D demos with exaggerated gripper motion.
 - Camera pipeline live-tested with IP Webcam on phone (April 2026): 1920×1080 frames from `http://192.168.129.1:8080/video`. Detector runs end-to-end. Real-scene detector tuning (HSV ranges for actual lab objects, not demo red cup / blue plate) not yet done.
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
@@ -165,11 +167,14 @@ All 8 motion primitives hardware-validated (March 2026):
 - `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses
 - JSON format: `{ task, primitives: [{tool, args, timestamp}], metadata: {dataset, episode} }`
 
-**Phase 6A — move_to_delta + Segmenter v2 (CURRENT)**:
-- ~~Add `move_to_delta(dx, dy, dz)` primitive~~ — DONE: diagonal moves in a single IK call
-- ~~Refactor axis-aligned primitives as aliases~~ — DONE: `move_left` etc. are now documented aliases of `move_to_delta`
-- ~~Rewrite segmenter: waypoint-based instead of greedy dominant-axis~~ — DONE: segmenter v2 with `--density low|medium|high`, visualized via `visualize_trajectory.py --segment`
-- **Test Zero**: replay segmenter v2 output on hardware — critical gate for Path B
+**Phase 6A — move_to_delta + Segmenter v2 (DONE)**:
+- ~~Add `move_to_delta(dx, dy, dz)` primitive~~ — DONE
+- ~~Refactor axis-aligned primitives as aliases~~ — DONE
+- ~~Rewrite segmenter: waypoint-based~~ — DONE
+- ~~Test Zero: replay segmenter v2 output on hardware~~ — **DONE 2026-05-17**: sticks_v3 ep0, structure correct, gravity sag the remaining known issue
+- **5D delta** (`dx,dy,dz,dtheta,dgripper`) — DONE: `move_to_delta` and `move_cartesian_delta` extended; segmenter computes wrist_roll and gripper deltas per segment, no more separate `grasp()`/`release()` primitives in sequence output
+- **Segmenter param overrides** — DONE: `--angle`, `--dip`, `--min-dist` CLI flags for fine-grained density beyond low/medium/high presets; custom sequences named `episode_NNN_aA_dD_mM.json`
+- **`scripts/replay_sequence.py`** — DONE: reads first-frame joints from Parquet for correct start position, replays sequence via `LeRobotInterface` directly (`SIMULATE=false` baked in), supports `--density` and `--seq` for custom files
 
 **Phase 6B — Full Loop (NEXT)**:
 - ~~Camera setup (IP Webcam on phone) + wire into perception pipeline~~ — DONE (phone MJPEG stream, `DECRAS_CAMERA` env var, live-tested)
@@ -177,16 +182,33 @@ All 8 motion primitives hardware-validated (March 2026):
 - Analyze LLM failure modes
 - First RAG experiment: inject demo sequence as few-shot example
 
-**Phase 6C — Demo Store & Retrieval (AFTER 6A+6B)**:
+**Phase 6C — Demo Store (DONE, retriever/RAG superseded)**:
 - ~~Demo store schema~~ — DONE (retrieval.py dataclasses)
 - ~~Demo store writer~~ — DONE (`decras.imitation.store`, CLI at `scripts/add_demo.py`, `demos/` at project root)
-- Retriever (TF-IDF / embedding cosine on task strings) + RAG integration + more demos + fine-tuning data
+- Retriever / RAG / fine-tuning items moved to Phase 6F (over discovered codes, not raw `move_to_delta` sequences). See `EMERGENT_ROBOTICS_PLAN.md` and ARCHITECTURE.md decisions #8 and #9.
 
-### Phase 7 — Memory & Context
+**Phase 6D — Data Collection for Vocabulary Discovery (NEXT)**:
+- Recorder upgrades: gripper force (or skip), camera frames at 5Hz wired into Parquet
+- 30+ teleop demos across 2-3 task types with deliberately varied starting positions
+- **Gate**: Test Zero (6A.3) must pass first — delta replay reliability is a prerequisite for the conditioned policy in 6E
 
-- Persistent memory across sessions (what worked, what failed, object locations)
-- Task decomposition: break complex instructions into subtask plans
-- Error recovery: if a grasp fails, reason about why and retry with adjusted parameters
+**Phase 6E — Action VQ-VAE**:
+- ~300 LOC PyTorch on `decras/imitation/vqvae.py`. K=8 first, try 12 and 16
+- Validate vocabulary: codebook usage, per-code member visualization, encode all demos to code sequences
+- Self-supervised — no labels, no rewards
+
+**Phase 6F — Conditioned Policy + LLM Grounding + RAG-over-codes**:
+- `decras/imitation/policy.py`: small MLP/GRU, BC on (state, gripper, code) → (delta, gripper_action)
+- LLM names each code by reading before/after scene graphs of all its members
+- New MCP tool: `execute_code(code: int)` runs the policy at 50Hz; `move_to_delta` stays for debug/fallback
+- RAG over codes: retrieve `(task, scene_features) → code_sequence` from past runs, inject as few-shot. Cold-start by encoding the 30 Phase 6D demos.
+
+### Phase 7 — Rotation, JEPA, Memory (FUTURE)
+
+- Extend deltas to (dx, dy, dz, dθ) — retrain VQ-VAE + policy with 4D action space
+- JEPA enters: encode (delta_sequence, latent_state_transition) pairs so vocabulary is grounded in *what the world does*
+- Persistent memory across sessions, task decomposition, error recovery
+- Optional fine-tuning if RAG hits a ceiling
 
 ---
 

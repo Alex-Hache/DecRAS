@@ -60,32 +60,21 @@ about task semantics.
 
 ---
 
-## Two Research Paths
+## Unified Research Direction (2026-05)
 
-### Path B — The 4-Weekend PoC (ACTIVE, CURRENT FOCUS)
+Path A and Path B have been merged. See `EMERGENT_ROBOTICS_PLAN.md` for the full plan.
 
-**Goal**: Demonstrate the full loop — record demos, decompose into primitives, use them
-to improve LLM tool-call selection.
+**Three-layer architecture with learned interfaces:**
 
-- Object-relative primitives (move_to_object, not move_left 0.05)
-- Trivial demo parser (greedy axis segmentation — already built)
-- Imitation learning: demo → primitive sequence → fine-tune LLM tool calling
-- RAG retrieval: given task description, find similar demo sequences as context
+1. **Conditioned policy** (50-100Hz): `(state, latent_code) → delta`. Small MLP/GRU trained by behavioral cloning on segmented demos.
+2. **Action VQ-VAE** (self-supervised): trained on delta-sequence segments. Codebook (K≈8-12) IS the vocabulary — discovered, not designed.
+3. **LLM planner** (0.5-2Hz): emits sequences of latent codes. Names codes by observing scene-graph before/after of each code across demos. Reactive replan after each code execution.
 
-**Why this first**: It proves the thesis end-to-end without requiring research breakthroughs.
-If this works, even crudely, it validates the entire architecture.
+**RAG over discovered codes** replaces RAG over raw demos. Every successful run stores `(task, scene_features, code_sequence)`. Retrieval keyed on task embedding + scene graph (object positions, gripper state, starting EE pose) — not task string alone. Few-shot inject into LLM prompt. Cold-start by encoding the original 30 demos through the VQ-VAE.
 
-### Path A — Research Track (FUTURE)
+**Why this composition:** the VQ-VAE solves the abstraction mismatch — segmentation and vocabulary are co-discovered from the same self-supervised loss. The LLM stays in its strength zone (discrete reasoning over a small symbol set). The conditioned policy absorbs state-dependent execution detail without needing language. RAG compounds with use without retraining.
 
-**Goal**: Discover the right primitive vocabulary from data, bottom-up.
-
-- High-frequency axis-relative primitives (the current 20 tools)
-- Embed tool-call sequences using structured tokenization
-- Bottom-up vocabulary discovery: cluster sequences into higher-level skills
-- This is where the JEPA + differentiable MPC work eventually connects
-
-**Why later**: This requires solving the abstraction mismatch problem (see below).
-Path B proves the architecture; Path A optimizes it.
+**Why merged:** Path B's "demo → primitive sequence → fine-tune" assumed hand-designed primitives. Path A's "bottom-up vocabulary discovery" assumed bespoke clustering. The VQ-VAE does both jobs at once, with a proven technique (VQ-BeT, VQ-VAE for action discretization). No need to keep the paths separate.
 
 ---
 
@@ -132,48 +121,68 @@ we're researching — the planning/execution decomposition is. ArUco lets us sid
 vision uncertainty entirely for the PoC. The plan is to use a phone as camera via
 IP Webcam app, which avoids USB camera driver headaches on Linux.
 
-### 6. No IK — Data-Driven Joint-Space Lookup (CURRENT BLOCKER)
+### 6. Joint-Space Lookup Table — ABANDONED (resolved 2026-04-12)
 
-**What**: Replace the placo/PyBullet IK solver with a lookup table built from real
-teleoperation data. Teleoperate the arm to a grid of ~75 positions across the workspace,
-record (Cartesian_position, joint_angles) pairs. For arbitrary targets, interpolate between
-nearest recorded neighbors using KNN + inverse-distance weighting (optionally scipy RBF).
+**What was proposed**: Replace placo IK with a KNN lookup over a teleoperated calibration
+grid (~75 positions, ruler-measured xyz → joint angles).
 
-**Why**: The available IK solutions for SO-100/101 have inaccurate DH parameters — the
-arm moves to wrong positions. This is inherent to 3D-printed arms where the actual
-geometry doesn't match the URDF/DH model precisely. The lookup table bypasses this
-entirely: the mapping comes from the physical arm, not a kinematic model.
+**Why abandoned**: The root cause of "broken IK on hardware" turned out to be a software
+bug, not bad DH parameters. `joints_to_cartesian()` and `cartesian_to_joints()` were
+silently defaulting all input joints to 0° because LeRobot returns `"shoulder_pan.pos"`
+keys but `kinematics.py` looked up `"shoulder_pan"`. Fix: `_normalize_joint_dict()` in
+kinematics.py. Validated on hardware with 10cm XY square. placo IK is now accurate
+enough; the lookup table approach would be high effort for marginal gain.
 
-**Status**: This is the current blocker. The existing 20 MCP primitives (move_left, etc.)
-use placo IK via `kinematics.py`, which produces incorrect positions on real hardware.
-Until the lookup table replaces this, Cartesian-space primitives are unreliable, and
-segmenter output from teleoperation data maps to primitives that don't execute correctly.
+**Residual issue**: position-only IK changes wrist_flex during EE-space moves → small
+Z drift when moving in X. Tracked as a known limitation, not a blocker.
 
-**Control pipeline (target architecture)**:
-```
-MCP plan(skill="move_toward", target="cup")
-    → Resolve "cup" → Cartesian position from scene graph
-    → JointLookup.solve(target_xyz) → KDTree nearest neighbors
-                                    → inverse-distance interpolation
-                                    → target joint angles
-    → minimum_jerk_joint_trajectory(current, target, duration)
-    → TrajectoryExecutor: send joints at 50Hz via robot.send_action()
-```
+### 7. `move_to_delta` as the Canonical EE-Space Primitive (2026-04-19)
 
-**Calibration grid spec**:
-- X: 0.15m–0.35m from base (5 points), Y: ±0.15m (5 points), Z: table to +0.15m (3 heights)
-- ~75 positions + 5-10 extra at key locations (home, grasp height)
-- Recording: teleoperate with leader arm, record follower joint angles
-- Position measurement: manual (ruler) initially, ArUco-based later
-- Safety: refuse targets more than ~5cm from any recorded point
+**What**: One primitive — `move_to_delta(dx, dy, dz)` — handles all EE-space translation.
+Axis-aligned primitives (`move_left`, `move_up`, etc.) are thin aliases that call it with
+two zero components. Plans all sub-waypoints upfront from FK seed, chains IK seeds,
+uses convergence-based wait + active-hold the final pose against gravity droop.
 
-### 7. Minimum-Jerk Interpolation in Joint Space
+**Why**: Diagonal moves in a single IK call, no staircase artifacts in segmenter output,
+and the prior implementation's two bugs (mid-motion `get_observation()` reads + 200ms
+inner interpolation servos couldn't track) are fixed. Hardware-validated: 80-95% reach
+on horizontal/down moves, ~6mm gravity-sag floor.
 
-**What**: Deterministic, closed-form trajectory generation. 20 lines of code.
-`x(t) = x₀ + (x_f - x₀) × [10(t/T)³ - 15(t/T)⁴ + 6(t/T)⁵]`, applied per-joint.
-**Why**: Produces smooth trajectories from coarse waypoints. No learned trajectory
-generation needed. Combined with the lookup table, this gives reliable, smooth motion
-from any current position to any target in the recorded workspace.
+**Known hardware limit**: +Z up moves only reach 25-50% of commanded distance due to
+Feetech servo torque insufficient to lift the arm against gravity. Tracked in BACKLOG.
+
+### 8. Emergent Vocabulary via Action VQ-VAE (2026-05)
+
+**What**: Stop hand-designing the LLM's primitive vocabulary. Train a VQ-VAE on delta
+sequences from teleop demos. The discrete codebook IS the vocabulary. A conditioned
+policy executes any code from any state. The LLM names the codes by observing scene-graph
+outcomes and plans by sequencing them.
+
+**Why**: Hand-designed primitives create a ceiling on what the system can learn — the
+engineer's intuitions about action granularity may not match the robot's actual behavioral
+structure. VQ-VAE is well-understood in low-dim action spaces (VQ-BeT etc.). Self-supervised
+on cheap teleop data. Decouples reasoning (LLM) from structure discovery (VQ-VAE) from
+control (conditioned policy) — each can be improved independently.
+
+**What this replaces**: the previous plan of "fine-tune the LLM on (task, tool_call_sequence)
+pairs over hand-designed primitives." Fine-tuning becomes optional / Phase 7+ if it's even
+needed.
+
+### 9. RAG over Discovered Codes (2026-05)
+
+**What**: Retrieve past `(task, scene_features, code_sequence)` tuples by cosine similarity
+on task embedding + scene-graph features. Inject the top-K as few-shot in the LLM prompt.
+
+**Why this over fine-tuning**: code sequences are tiny (token IDs), self-improving (every
+successful run adds an entry), no retraining loop, and the reactive replan loop corrects
+when the retrieved sequence diverges from the current scene. Scene-aware retrieval is what
+matters — task-string-only retrieval can't tell "pick from far-left" from "pick from center."
+
+**Cold start**: bootstrap by encoding the original 30 demos through the trained VQ-VAE.
+Day one of Phase 4 already has 30 entries.
+
+**Reuses**: existing `decras/imitation/store.py` schema. A `Primitive` becomes
+`{code: int, name: str}` instead of `{tool: "move_to_delta", args: {...}}`.
 
 ---
 

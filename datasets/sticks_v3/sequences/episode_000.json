@@ -1,0 +1,117 @@
+{
+  "task": "",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0465,
+        "dy": -0.0108,
+        "dz": -0.0033
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.001,
+        "dy": -0.0452,
+        "dz": -0.006
+      },
+      "timestamp": 0.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.035,
+        "dy": -0.0072,
+        "dz": 0.0205
+      },
+      "timestamp": 1.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.001,
+        "dy": 0.0186,
+        "dz": 0.0797
+      },
+      "timestamp": 2.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.1181,
+        "dy": -0.001,
+        "dz": 0.0193
+      },
+      "timestamp": 3.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0932,
+        "dy": 0.0724,
+        "dz": -0.0911
+      },
+      "timestamp": 7.5333
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0216,
+        "dy": 0.0083,
+        "dz": -0.0325
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.123,
+        "dy": 0.1143,
+        "dz": 0.0466
+      },
+      "timestamp": 11.0333
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0893,
+        "dy": -0.1987,
+        "dz": -0.0387
+      },
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0641,
+        "dy": 0.018,
+        "dz": 0.0037
+      },
+      "timestamp": 22.6333
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v3",
+    "episode": 0,
+    "density": "medium",
+    "start_ee_position": {
+      "x": 0.1699,
+      "y": 0.0411,
+      "z": -0.0001
+    }
+  }
+}

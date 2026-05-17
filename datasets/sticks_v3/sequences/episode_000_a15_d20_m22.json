@@ -1,0 +1,288 @@
+{
+  "task": "",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0465,
+        "dy": -0.0108,
+        "dz": -0.0033
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0108,
+        "dy": -0.022,
+        "dz": -0.0033
+      },
+      "timestamp": 0.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0118,
+        "dy": -0.0231,
+        "dz": -0.0026
+      },
+      "timestamp": 0.3333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.035,
+        "dy": -0.0072,
+        "dz": 0.0205
+      },
+      "timestamp": 1.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0009,
+        "dy": 0.0153,
+        "dz": 0.0725
+      },
+      "timestamp": 2.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0066,
+        "dy": 0.0187,
+        "dz": 0.0119
+      },
+      "timestamp": 3.7
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0492,
+        "dy": -0.0027,
+        "dz": 0.064
+      },
+      "timestamp": 4.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0213,
+        "dy": -0.0099,
+        "dz": 0.0025
+      },
+      "timestamp": 6.0667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0126,
+        "dy": -0.0025,
+        "dz": -0.0269
+      },
+      "timestamp": 6.4333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0339,
+        "dy": -0.0022,
+        "dz": -0.0201
+      },
+      "timestamp": 6.8333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0068,
+        "dy": 0.0044,
+        "dz": -0.0214
+      },
+      "timestamp": 7.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0226,
+        "dy": 0.0079,
+        "dz": -0.0252
+      },
+      "timestamp": 7.8
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0699,
+        "dy": 0.0609,
+        "dz": -0.0493
+      },
+      "timestamp": 8.1333
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0225,
+        "dy": 0.0065,
+        "dz": -0.0135
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0055,
+        "dy": 0.0035,
+        "dz": -0.0219
+      },
+      "timestamp": 10.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0172,
+        "dy": 0.0041,
+        "dz": 0.0419
+      },
+      "timestamp": 11.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0003,
+        "dy": 0.0057,
+        "dz": 0.0219
+      },
+      "timestamp": 12.7333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0074,
+        "dy": 0.0152,
+        "dz": 0.0204
+      },
+      "timestamp": 12.9333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.029,
+        "dy": 0.0555,
+        "dz": 0.029
+      },
+      "timestamp": 13.1333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0151,
+        "dy": 0.0162,
+        "dz": 0.0035
+      },
+      "timestamp": 13.5333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0637,
+        "dy": 0.037,
+        "dz": 0.0013
+      },
+      "timestamp": 13.6667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0184,
+        "dy": 0.0104,
+        "dz": -0.0087
+      },
+      "timestamp": 14.2
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0088,
+        "dy": -0.0012,
+        "dz": -0.0215
+      },
+      "timestamp": 14.4333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0028,
+        "dy": -0.0303,
+        "dz": -0.0382
+      },
+      "timestamp": 14.7667
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.1746,
+        "dy": -0.1561,
+        "dz": 0.1311
+      },
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0022,
+        "dy": -0.0248,
+        "dz": 0.0019
+      },
+      "timestamp": 19.5333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0313,
+        "dy": -0.0373,
+        "dz": -0.1309
+      },
+      "timestamp": 19.7333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0518,
+        "dy": 0.0195,
+        "dz": -0.0408
+      },
+      "timestamp": 21.2333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0641,
+        "dy": 0.018,
+        "dz": 0.0037
+      },
+      "timestamp": 22.6333
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v3",
+    "episode": 0,
+    "density": "custom(angle=15.0,dip=0.2,min_dist=0.022)",
+    "start_ee_position": {
+      "x": 0.1699,
+      "y": 0.0411,
+      "z": -0.0001
+    }
+  }
+}

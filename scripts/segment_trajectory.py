@@ -77,16 +77,22 @@ def _unwrap_scalar(val):
     return int(val)
 
 
-def compute_ee_trajectory(episode_df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """FK over all frames → (N,3) EE positions in meters, (N,) gripper values, (N,) timestamps."""
-    positions, grippers, timestamps = [], [], []
+_WRIST_ROLL_INDEX = 4  # index of wrist_roll in _STATE_JOINT_ORDER
+
+
+def compute_ee_trajectory(
+    episode_df: pd.DataFrame,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """FK over all frames → (N,3) EE positions, (N,) gripper, (N,) wrist_roll, (N,) timestamps."""
+    positions, grippers, wrist_rolls, timestamps = [], [], [], []
     for _, row in episode_df.iterrows():
         state = row["observation.state"]
         hw = {name: float(state[i]) for i, name in enumerate(_STATE_JOINT_ORDER)}
         positions.append(joints_to_cartesian(hw))
         grippers.append(float(state[_GRIPPER_INDEX]))
+        wrist_rolls.append(float(state[_WRIST_ROLL_INDEX]))
         timestamps.append(float(row["timestamp"]))
-    return np.array(positions), np.array(grippers), np.array(timestamps)
+    return np.array(positions), np.array(grippers), np.array(wrist_rolls), np.array(timestamps)
 
 
 def _smooth(arr: np.ndarray, k: int) -> np.ndarray:
@@ -194,19 +200,20 @@ def detect_waypoints(
 # Primitive emission
 # ---------------------------------------------------------------------------
 
-def _round_vec(v: np.ndarray, digits: int = 4) -> dict[str, float]:
-    return {"dx": round(float(v[0]), digits), "dy": round(float(v[1]), digits), "dz": round(float(v[2]), digits)}
-
-
 def waypoints_to_primitives(
     ee: np.ndarray,
+    wrist_roll: np.ndarray,
+    gripper: np.ndarray,
     timestamps: np.ndarray,
     waypoints: list[int],
-    grasp_f: int | None,
-    release_f: int | None,
     min_segment_dist: float,
 ) -> list[dict]:
-    """Emit one move_to_delta per segment + grasp/release at gripper events."""
+    """Emit one move_to_delta(dx,dy,dz,dtheta,dgripper) per segment.
+
+    dtheta and dgripper are the total change over each segment, interpolated
+    linearly during execution by move_cartesian_delta. No separate grasp/release
+    primitives — gripper state is fully encoded in dgripper.
+    """
     primitives: list[dict] = []
     t0 = float(timestamps[0])
 
@@ -215,19 +222,18 @@ def waypoints_to_primitives(
         return round(float(timestamps[frame]) - t0, 4)
 
     for a, b in zip(waypoints[:-1], waypoints[1:]):
-        delta = ee[b] - ee[a]
-        dist = float(np.linalg.norm(delta))
-        if dist >= min_segment_dist:
-            primitives.append({
-                "tool": "move_to_delta",
-                "args": _round_vec(delta),
-                "timestamp": _ts(a),
-            })
-        # Insert gripper action at the waypoint we've just arrived at
-        if grasp_f is not None and b == grasp_f:
-            primitives.append({"tool": "grasp", "args": {"force": 0.5}, "timestamp": _ts(b)})
-        if release_f is not None and b == release_f:
-            primitives.append({"tool": "release", "args": {}, "timestamp": _ts(b)})
+        delta_ee = ee[b] - ee[a]
+        dist = float(np.linalg.norm(delta_ee))
+        if dist < min_segment_dist:
+            continue
+        args = {
+            "dx": round(float(delta_ee[0]), 4),
+            "dy": round(float(delta_ee[1]), 4),
+            "dz": round(float(delta_ee[2]), 4),
+            "dtheta": round(float(wrist_roll[b] - wrist_roll[a]), 2),
+            "dgripper": round(float(gripper[b] - gripper[a]), 2),
+        }
+        primitives.append({"tool": "move_to_delta", "args": args, "timestamp": _ts(a)})
 
     return primitives
 
@@ -235,15 +241,20 @@ def waypoints_to_primitives(
 def segment_episode(
     ee: np.ndarray,
     gripper: np.ndarray,
+    wrist_roll: np.ndarray,
     timestamps: np.ndarray,
     density: str = "medium",
+    params: DensityParams | None = None,
 ) -> list[dict]:
     """Full episode → list of primitive dicts matching the Demo schema."""
-    if density not in DENSITY_PRESETS:
-        raise ValueError(f"Unknown density '{density}' (expected: {list(DENSITY_PRESETS)})")
-    params = DENSITY_PRESETS[density]
+    if params is None:
+        if density not in DENSITY_PRESETS:
+            raise ValueError(f"Unknown density '{density}' (expected: {list(DENSITY_PRESETS)})")
+        params = DENSITY_PRESETS[density]
 
     smooth_ee = _smooth(ee, SMOOTH_K)
+    smooth_gripper = _smooth(gripper, GRIPPER_SMOOTH_K)
+    smooth_wrist = _smooth(wrist_roll, GRIPPER_SMOOTH_K)
     grasp_f, release_f = _find_gripper_events(gripper)
 
     if grasp_f is None:
@@ -259,7 +270,7 @@ def segment_episode(
     print(f"  Density '{density}' → {len(waypoints)} waypoints")
 
     return waypoints_to_primitives(
-        smooth_ee, timestamps, waypoints, grasp_f, release_f, params.min_segment_dist_m
+        smooth_ee, smooth_wrist, smooth_gripper, timestamps, waypoints, params.min_segment_dist_m
     )
 
 
@@ -270,6 +281,7 @@ def segment_episode(
 def segment_episode_with_waypoints(
     ee: np.ndarray,
     gripper: np.ndarray,
+    wrist_roll: np.ndarray,
     timestamps: np.ndarray,
     density: str = "medium",
 ) -> tuple[list[dict], np.ndarray, list[int], int | None, int | None]:
@@ -279,6 +291,8 @@ def segment_episode_with_waypoints(
     """
     params = DENSITY_PRESETS[density]
     smooth_ee = _smooth(ee, SMOOTH_K)
+    smooth_gripper = _smooth(gripper, GRIPPER_SMOOTH_K)
+    smooth_wrist = _smooth(wrist_roll, GRIPPER_SMOOTH_K)
     grasp_f, release_f = _find_gripper_events(gripper)
     if grasp_f is None:
         grasp_f = len(ee) // 3
@@ -287,7 +301,7 @@ def segment_episode_with_waypoints(
 
     waypoints = detect_waypoints(smooth_ee, [grasp_f, release_f], params)
     primitives = waypoints_to_primitives(
-        smooth_ee, timestamps, waypoints, grasp_f, release_f, params.min_segment_dist_m
+        smooth_ee, smooth_wrist, smooth_gripper, timestamps, waypoints, params.min_segment_dist_m
     )
     return primitives, smooth_ee, waypoints, grasp_f, release_f
 
@@ -302,7 +316,13 @@ def main():
     parser.add_argument("--task", default="", help="Task description for the demo store")
     parser.add_argument("--episode", type=int, default=None, help="Episode index (default: all)")
     parser.add_argument("--density", choices=list(DENSITY_PRESETS), default="medium",
-                        help="Waypoint density: low=abstract, high=faithful replay")
+                        help="Waypoint density preset: low=abstract, high=faithful replay")
+    parser.add_argument("--angle", type=float, default=None,
+                        help="Override angle_threshold_deg (lower = more waypoints, e.g. 15 for very dense)")
+    parser.add_argument("--dip", type=float, default=None,
+                        help="Override dip_ratio (higher = more waypoints, e.g. 0.30)")
+    parser.add_argument("--min-dist", type=float, default=None,
+                        help="Override min_segment_dist_m (lower = more waypoints, e.g. 0.010)")
     parser.add_argument("--out", default=None, help="Directory to save JSON sequences")
     args = parser.parse_args()
 
@@ -321,13 +341,25 @@ def main():
             raise ValueError(f"Episode {args.episode} not found (available: {episodes})")
         episodes = [args.episode]
 
+    # Build params from preset, then apply any CLI overrides
+    base = DENSITY_PRESETS[args.density]
+    params = DensityParams(
+        angle_threshold_deg=args.angle if args.angle is not None else base.angle_threshold_deg,
+        dip_ratio=args.dip if args.dip is not None else base.dip_ratio,
+        min_segment_dist_m=args.min_dist if args.min_dist is not None else base.min_segment_dist_m,
+    )
+    density_label = args.density
+    if any(v is not None for v in [args.angle, args.dip, args.min_dist]):
+        density_label = f"custom(angle={params.angle_threshold_deg},dip={params.dip_ratio},min_dist={params.min_segment_dist_m})"
+    print(f"Params: angle={params.angle_threshold_deg}° dip={params.dip_ratio} min_dist={params.min_segment_dist_m}m")
+
     results = {}
     for ep_num in episodes:
         ep_df = df[df["_ep"] == ep_num].reset_index(drop=True)
         print(f"\nEpisode {ep_num} ({len(ep_df)} frames) — running FK...")
 
-        ee, gripper, timestamps = compute_ee_trajectory(ep_df)
-        primitives = segment_episode(ee, gripper, timestamps, density=args.density)
+        ee, gripper, wrist_roll, timestamps = compute_ee_trajectory(ep_df)
+        primitives = segment_episode(ee, gripper, wrist_roll, timestamps, density=args.density, params=params)
 
         demo = {
             "task": args.task,
@@ -335,7 +367,7 @@ def main():
             "metadata": {
                 "dataset": dataset_name,
                 "episode": int(ep_num),
-                "density": args.density,
+                "density": density_label,
                 "start_ee_position": {"x": round(float(ee[0, 0]), 4), "y": round(float(ee[0, 1]), 4), "z": round(float(ee[0, 2]), 4)},
             },
         }
@@ -348,7 +380,10 @@ def main():
 
         save_dir = out_dir or (dataset_root / "sequences")
         save_dir.mkdir(parents=True, exist_ok=True)
-        suffix = f"_{args.density}" if args.density != "medium" else ""
+        if any(v is not None for v in [args.angle, args.dip, args.min_dist]):
+            suffix = f"_a{int(params.angle_threshold_deg)}_d{int(params.dip_ratio*100)}_m{int(params.min_segment_dist_m*1000)}"
+        else:
+            suffix = f"_{args.density}" if args.density != "medium" else ""
         out_file = save_dir / f"episode_{int(ep_num):03d}{suffix}.json"
         out_file.write_text(json.dumps(demo, indent=2))
         print(f"  Saved → {out_file}")

@@ -213,16 +213,21 @@ class LeRobotInterface:
         if SIMULATE:
             return True
         start = time.time()
+        arm_joints = {k: v for k, v in target_joints.items() if k != "gripper"}
         action = {f"{name}.pos": val for name, val in target_joints.items()}
+        # Always send at least once — convergence check would skip tiny changes otherwise
+        self._robot.send_action(action)
+        time.sleep(resend_interval_s)
         while time.time() - start < max_wait_s:
             current = self.get_joint_positions()
+            # Convergence check only on arm joints — gripper responds instantly
             max_err = max(
-                abs(current.get(name, 0.0) - target_joints[name])
-                for name in target_joints
-            )
+                abs(current.get(name, 0.0) - arm_joints[name])
+                for name in arm_joints
+            ) if arm_joints else 0.0
             if max_err < tolerance_deg:
                 return True
-            self._robot.send_action(action)  # re-assert against droop
+            self._robot.send_action(action)
             time.sleep(resend_interval_s)
         return False
 
@@ -274,13 +279,24 @@ class LeRobotInterface:
             self._last_status = "failed"
             return {"status": "failed", "reason": str(e)}
 
-    def move_cartesian_delta(self, dx: float, dy: float, dz: float, velocity: str = "normal") -> dict:
+    def move_cartesian_delta(
+        self,
+        dx: float, dy: float, dz: float,
+        dtheta: float = 0.0,
+        dgripper: float = 0.0,
+        velocity: str = "normal",
+    ) -> dict:
         """Move end-effector by a Cartesian delta (meters) along a straight line.
 
         Plans all sub-waypoints UPFRONT from the current FK seed (not from
         mid-motion observations), chains IK seeds, executes each setpoint
         with convergence wait, and active-holds the final pose to counter
         gravity droop.
+
+        Args:
+            dx, dy, dz: EE translation in meters (robot base frame)
+            dtheta: wrist_roll delta in degrees (positive = CW)
+            dgripper: gripper position delta (0-100 scale, positive = more open)
         """
         if SIMULATE:
             current = self.get_ee_position()
@@ -293,7 +309,8 @@ class LeRobotInterface:
 
             # 1. Snapshot starting joints — single read, before ANY motion
             start_joints = self.get_joint_positions()
-            gripper_pos = start_joints.get("gripper", GRIPPER_OPEN)
+            start_gripper = start_joints.get("gripper", GRIPPER_OPEN)
+            start_wrist_roll = start_joints.get("wrist_roll", 0.0)
             start_arm = {k: v for k, v in start_joints.items() if k != "gripper"}
 
             # 2. FK seed (NOT hardware reading — avoids gravity sag in the plan)
@@ -310,17 +327,18 @@ class LeRobotInterface:
                 )
                 for i in range(n_steps)
             ]
-            # Clamp each waypoint to the workspace
             waypoints = [self._clamp_to_workspace(*wp) for wp in waypoints]
 
-            # 4. Chain IK from previous IK solution (NOT from observation)
+            # 4. Chain IK, interpolating dtheta and dgripper linearly across steps
             seed = dict(start_arm)
             ik_plan = []
-            for wp in waypoints:
+            for i, wp in enumerate(waypoints):
+                frac = (i + 1) / n_steps
                 ik = cartesian_to_joints(wp[0], wp[1], wp[2], seed_hw_joints=seed)
-                ik["gripper"] = gripper_pos
+                ik["wrist_roll"] = start_wrist_roll + dtheta * frac
+                ik["gripper"] = max(GRIPPER_CLOSED, min(GRIPPER_OPEN, start_gripper + dgripper * frac))
                 ik_plan.append(ik)
-                seed = {k: v for k, v in ik.items() if k != "gripper"}
+                seed = {k: v for k, v in ik.items() if k not in ("gripper",)}
 
             # 5. Execute: send each waypoint, wait for convergence
             max_wait = {"slow": 1.0, "normal": 0.5, "fast": 0.25}.get(velocity, 0.5)

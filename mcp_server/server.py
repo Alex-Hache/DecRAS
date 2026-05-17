@@ -419,7 +419,11 @@ def _joint_move(joint_deltas: dict, action_name: str, action_args: dict) -> str:
 
 @mcp.tool()
 @_safe_tool
-def move_to_delta(dx: float, dy: float, dz: float) -> str:
+def move_to_delta(
+    dx: float, dy: float, dz: float,
+    dtheta: float = 0.0,
+    dgripper: float = 0.0,
+) -> str:
     """Move gripper by a relative displacement in robot base frame (meters).
 
     Supports diagonal moves in a single call — more faithful than chaining
@@ -429,8 +433,19 @@ def move_to_delta(dx: float, dy: float, dz: float) -> str:
         dx: Displacement along X axis in meters (positive = forward)
         dy: Displacement along Y axis in meters (positive = left)
         dz: Displacement along Z axis in meters (positive = up)
+        dtheta: Wrist roll delta in degrees (positive = CW). Default 0.
+        dgripper: Gripper position delta on 0-100 scale (positive = more open). Default 0.
     """
-    return _cartesian_move(dx, dy, dz, "move_to_delta", {"dx": dx, "dy": dy, "dz": dz})
+    t0 = time.time()
+    args = {"dx": dx, "dy": dy, "dz": dz, "dtheta": dtheta, "dgripper": dgripper}
+    if env is not None:
+        current = env.get_gripper_state()["position"]
+        history.record(current)
+        result = env.move_to(current[0] + dx, current[1] + dy, current[2] + dz)
+    else:
+        result = _get_robot().move_cartesian_delta(dx, dy, dz, dtheta=dtheta, dgripper=dgripper)
+    _log_tool("move_to_delta", args, result, t0)
+    return json.dumps(result)
 
 
 # ── Axis-aligned aliases — convenience wrappers around move_to_delta ──

@@ -1,0 +1,450 @@
+{
+  "task": "",
+  "primitives": [
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0465,
+        "dy": -0.0108,
+        "dz": -0.0033
+      },
+      "timestamp": 0.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0108,
+        "dy": -0.022,
+        "dz": -0.0033
+      },
+      "timestamp": 0.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0118,
+        "dy": -0.0231,
+        "dz": -0.0026
+      },
+      "timestamp": 0.3333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0299,
+        "dy": -0.0063,
+        "dz": 0.0154
+      },
+      "timestamp": 1.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0024,
+        "dy": 0.0085,
+        "dz": 0.0209
+      },
+      "timestamp": 2.2667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0018,
+        "dy": 0.0058,
+        "dz": 0.0567
+      },
+      "timestamp": 2.9333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0066,
+        "dy": 0.0187,
+        "dz": 0.0119
+      },
+      "timestamp": 3.7
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0449,
+        "dy": -0.0011,
+        "dz": 0.0607
+      },
+      "timestamp": 4.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0201,
+        "dy": -0.0093,
+        "dz": 0.0078
+      },
+      "timestamp": 6.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0144,
+        "dy": -0.0048,
+        "dz": -0.0163
+      },
+      "timestamp": 6.3333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0092,
+        "dy": -0.0004,
+        "dz": -0.0219
+      },
+      "timestamp": 6.6667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0258,
+        "dy": -0.0017,
+        "dz": -0.0099
+      },
+      "timestamp": 7.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0107,
+        "dy": 0.0042,
+        "dz": -0.0199
+      },
+      "timestamp": 7.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0149,
+        "dy": 0.0037,
+        "dz": -0.0188
+      },
+      "timestamp": 7.7667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0163,
+        "dy": 0.0094,
+        "dz": -0.0139
+      },
+      "timestamp": 8.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0575,
+        "dy": 0.0539,
+        "dz": -0.041
+      },
+      "timestamp": 8.2667
+    },
+    {
+      "tool": "grasp",
+      "args": {
+        "force": 0.5
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0225,
+        "dy": 0.0065,
+        "dz": -0.0135
+      },
+      "timestamp": 9.4
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0055,
+        "dy": 0.0035,
+        "dz": -0.0219
+      },
+      "timestamp": 10.1667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0155,
+        "dy": 0.0035,
+        "dz": 0.0346
+      },
+      "timestamp": 11.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0027,
+        "dy": 0.0038,
+        "dz": 0.0219
+      },
+      "timestamp": 12.6667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0052,
+        "dy": 0.0114,
+        "dz": 0.0211
+      },
+      "timestamp": 12.8667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0082,
+        "dy": 0.0187,
+        "dz": 0.016
+      },
+      "timestamp": 13.0667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0087,
+        "dy": 0.019,
+        "dz": 0.0109
+      },
+      "timestamp": 13.2333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0117,
+        "dy": 0.0197,
+        "dz": 0.0074
+      },
+      "timestamp": 13.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0144,
+        "dy": 0.0171,
+        "dz": 0.0041
+      },
+      "timestamp": 13.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0208,
+        "dy": 0.0159,
+        "dz": 0.0018
+      },
+      "timestamp": 13.6333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.04,
+        "dy": 0.0209,
+        "dz": 0.0007
+      },
+      "timestamp": 13.8
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0212,
+        "dy": 0.0118,
+        "dz": -0.0059
+      },
+      "timestamp": 14.1333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0119,
+        "dy": 0.0036,
+        "dz": -0.0187
+      },
+      "timestamp": 14.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0032,
+        "dy": -0.0273,
+        "dz": -0.0331
+      },
+      "timestamp": 14.6667
+    },
+    {
+      "tool": "release",
+      "args": {},
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0334,
+        "dy": 0.0038,
+        "dz": 0.023
+      },
+      "timestamp": 16.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0187,
+        "dy": -0.0013,
+        "dz": 0.0126
+      },
+      "timestamp": 18.0667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0482,
+        "dy": -0.0169,
+        "dz": 0.0186
+      },
+      "timestamp": 18.2667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0198,
+        "dy": -0.0131,
+        "dz": 0.0078
+      },
+      "timestamp": 18.6333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0182,
+        "dy": -0.0177,
+        "dz": 0.0107
+      },
+      "timestamp": 18.7667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0118,
+        "dy": -0.0162,
+        "dz": 0.0098
+      },
+      "timestamp": 18.9
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0096,
+        "dy": -0.018,
+        "dz": 0.0108
+      },
+      "timestamp": 19.0
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0069,
+        "dy": -0.0184,
+        "dz": 0.0111
+      },
+      "timestamp": 19.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0065,
+        "dy": -0.0309,
+        "dz": 0.0164
+      },
+      "timestamp": 19.2
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": 0.0016,
+        "dy": -0.0224,
+        "dz": 0.0088
+      },
+      "timestamp": 19.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0013,
+        "dy": -0.0228,
+        "dz": 0.004
+      },
+      "timestamp": 19.5
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0052,
+        "dy": -0.02,
+        "dz": -0.012
+      },
+      "timestamp": 19.6667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0138,
+        "dy": -0.0243,
+        "dz": -0.0702
+      },
+      "timestamp": 19.9333
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0084,
+        "dy": -0.0007,
+        "dz": -0.0382
+      },
+      "timestamp": 20.7
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.012,
+        "dy": 0.0023,
+        "dz": -0.0209
+      },
+      "timestamp": 21.1
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0447,
+        "dy": 0.0179,
+        "dz": -0.031
+      },
+      "timestamp": 21.3667
+    },
+    {
+      "tool": "move_to_delta",
+      "args": {
+        "dx": -0.0641,
+        "dy": 0.018,
+        "dz": 0.0037
+      },
+      "timestamp": 22.6333
+    }
+  ],
+  "metadata": {
+    "dataset": "sticks_v3",
+    "episode": 0,
+    "density": "custom(angle=10.0,dip=0.2,min_dist=0.022)",
+    "start_ee_position": {
+      "x": 0.1699,
+      "y": 0.0411,
+      "z": -0.0001
+    }
+  }
+}

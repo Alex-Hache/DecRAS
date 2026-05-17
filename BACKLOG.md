@@ -91,11 +91,8 @@
 
 ### 6A.3 Test Zero
 
-- [ ] **Replay segmenter v2 output on hardware** — Take sticks_v2 episode 0, run through segmenter v2 (high density), replay the `move_to_delta` sequence via MCP tools on the real arm. Film it. Compare to the original teleop recording.
-  - *Done when*: Side-by-side comparison video. Honest assessment: does the arm do the same thing?
-  - *Time*: 30 min
-  - *Tag*: `hardware`
-  - **This is the critical gate.** If this fails, Path B needs rethinking.
+- [x] **Replay segmenter v2 output on hardware** — sticks_v3 ep0, tested at 19/21/31/49 primitives. Structure correct (approach → descent → grasp zone → transit → release → retreat). **PASSES.** Gravity sag causes drift in extended-arm sections — tracked separately.
+  - *Done 2026-05-17*: `scripts/replay_sequence.py` (new) reads starting joints from Parquet and replays via `LeRobotInterface` directly
 
 ---
 
@@ -129,33 +126,131 @@
 
 ---
 
-## Phase 6C — Demo Store & Retrieval (AFTER 6A + 6B)
+## Phase 6C — Demo Store (DONE, retriever/RAG superseded by Phase 6F)
 
-> Only worth building once Test Zero passes and the LLM loop exists.
+> Schema + writer are built. Retriever / RAG / fine-tuning items now live in Phase 6F
+> (RAG over discovered codes, not over raw `move_to_delta` sequences).
+> See `EMERGENT_ROBOTICS_PLAN.md` and ARCHITECTURE.md decisions #8 and #9.
 
 - [x] **Design demo store schema** — `decras/imitation/retrieval.py` — `Demo`, `Primitive`, `DemoMetadata` dataclasses.
+- [x] **Build demo store writer** — `decras.imitation.store` (save_demo/load_demo/list_demos/ingest_sequence), CLI `scripts/add_demo.py`, deterministic id, provenance fields.
 
-- [x] **Build demo store writer** — Segmenter v2 output + task string → Demo JSON on disk. Store at `demos/` with deterministic id `<dataset>_ep<NNN>_<density>.json`. `decras.imitation.store` has `save_demo` / `load_demo` / `list_demos` / `ingest_sequence`. CLI: `uv run python -m scripts.add_demo <sequence.json> --task "..."`. Duplicates raise unless `--overwrite`. Provenance fields added at ingest: `created_at`, `source_sequence_path`, `segmenter_git_sha`.
+---
+
+## Phase 6D — Data Collection for Vocabulary Discovery (NEXT)
+
+> 30+ teleop demos with deliberate variation so the VQ-VAE can discover meaningful action
+> structure. Plan reference: Phase 1 in `EMERGENT_ROBOTICS_PLAN.md`.
+>
+> **Gate**: Test Zero (6A.3) must pass first. If delta replay fails on hardware, the
+> conditioned policy in 6E will fail for the same reason.
+
+### 6D.1 Recorder upgrades
+
+- [ ] **Gripper force in observation** — Plan wants `gripper.force`. Decide: read force from Feetech if supported, or drop force and use gripper position deltas as the open/close signal. Document.
+  - *Tag*: `research`, then `claude-code`
+  - *Time*: 30 min
+
+- [ ] **Wire camera frames into recorder** — Capture from `DECRAS_CAMERA` at 5Hz (every 6th control frame), store aligned with Parquet rows. Needed for later JEPA / scene graph annotation.
   - *Tag*: `claude-code`
+  - *Time*: 30 min
 
-- [ ] **Build demo retriever** — TF-IDF or sentence-transformer cosine similarity on task descriptions. `retrieve("pick up the stick") → [demo_1, demo_3]`.
-  - *Tag*: `claude-code`
+### 6D.2 Record 30 demos with variation
 
-- [ ] **RAG integration** — Inject retrieved demos into LLM prompt via `llm_controller/prompt.py`.
-
-- [ ] **Record more demos** — 5-10 episodes of different tasks (pick-place, push, stack).
+- [ ] **Pick 2-3 task types** — e.g. cup→plate, block→stack, stick→bin. 10 demos each. Document in `datasets/README.md`.
   - *Tag*: `hardware`
 
-- [ ] **Export fine-tuning pairs** — `(task_description, tool_call_sequence)` JSONL for fine-tuning.
+- [ ] **Vary starting positions deliberately** — Object positions, arm start poses, approach angles. At least 3 distinct starting regions per task. The plan is explicit: uniform starts kill conditioned-policy generalization.
+  - *Tag*: `hardware`
+  - *Time*: 30-45 min per batch of 10
+
+- [ ] **Coverage sanity check** — `scripts/visualize_trajectory.py` over the new dataset. EE paths should span the workspace.
   - *Tag*: `claude-code`
 
 ---
 
-## Phase 7 — Memory & Context (FUTURE — don't start yet)
+## Phase 6E — Action VQ-VAE (after 6D)
 
-- [ ] Design persistent memory format (what worked, what failed, object locations)
-- [ ] Implement task decomposition in LLM prompt
-- [ ] Build error recovery loop (grasp failed → re-observe → retry with adjustment)
+> ~300 LOC PyTorch. Plan reference: Phase 2.
+
+### 6E.1 Baseline segments
+
+- [ ] **Use segmenter v2 (medium) as segment source** — Already built. Per demo: ordered list of (delta_sequence, start_state, end_state) segments.
+  - *Tag*: `claude-code`
+
+- [ ] **Segment-distribution viz** — Histogram of segment lengths, directions, cause (gripper / direction change / speed dip). Informs choice of K.
+  - *Tag*: `claude-code`
+
+### 6E.2 Train VQ-VAE
+
+- [ ] **Build `decras/imitation/vqvae.py`** — 1D CNN or small GRU encoder, learnable codebook (K=8 first; try 12 and 16), decoder reconstructs delta sequence. Reconstruction + commitment losses.
+  - *Tag*: `claude-code`
+  - *Time*: 2-3h
+
+- [ ] **`scripts/train_vqvae.py`** — Read `demos/` segments, train, save checkpoint + codebook.
+  - *Tag*: `claude-code`
+
+### 6E.3 Validate vocabulary
+
+- [ ] **Codebook usage report** — Dead codes → reduce K. Wildly different members → increase K.
+- [ ] **Per-code member viz** — Overlay all delta trajectories mapping to code k. Should look similar in direction + speed profile.
+- [ ] **Encode all demos to code sequences** — Persist `segment_id → code` and per-demo `code_sequence` into the demo store.
+
+---
+
+## Phase 6F — Conditioned Policy + LLM Grounding + RAG-over-codes
+
+> ~200 LOC for the policy, rest is glue. Plan reference: Phases 3 + 4.
+
+### 6F.1 Conditioned policy
+
+- [ ] **Build `decras/imitation/policy.py`** — Small MLP/GRU. Input: current joints + gripper + one-hot code. Output: next delta + gripper action. BC training on (state_t, gripper_t, code) → (delta_t, gripper_action_t).
+  - *Tag*: `claude-code`
+
+- [ ] **`scripts/train_policy.py`**
+  - *Tag*: `claude-code`
+
+- [ ] **Held-out replay test** — Held-out demo, encoded to codes, executed by the policy from the recorded starting state. Does it match the demo?
+  - *Tag*: `hardware`
+
+- [ ] **Generalization test** — Same code from a different starting state. Sensible behavior?
+  - *Tag*: `hardware`
+
+### 6F.2 LLM grounding
+
+- [ ] **Collect before/after scene-graphs per code** — For each code, gather scene graphs before/after every segment that maps to it. Feed to LLM, save the assigned name in codebook metadata.
+  - *Tag*: `research`
+
+### 6F.3 MCP `execute_code(k)` tool
+
+- [ ] **Add `execute_code(code: int)` MCP tool** — Loads conditioned policy, runs at 50Hz from current state + code, returns post-execution scene graph.
+  - *Tag*: `claude-code`
+
+- [ ] **Keep `move_to_delta` registered** — Useful for debugging and fallback.
+
+### 6F.4 RAG over codes
+
+- [ ] **Extend `Primitive` dataclass** — Add code-mode variant `{code: int, name: str}` alongside the current tool-call variant.
+  - *Tag*: `claude-code`
+
+- [ ] **Code-sequence retriever** — Cosine similarity over `(task_embedding, scene_features)` where scene_features = object positions + gripper state + starting EE pose. Top-K past code sequences.
+  - *Tag*: `claude-code`
+
+- [ ] **RAG integration** — Inject retrieved code sequences into `llm_controller/prompt.py`. Bootstrap by encoding all 30 Phase 6D demos.
+  - *Tag*: `claude-code`
+
+- [ ] **End-to-end demo** — Natural-language task → LLM plans code sequence (with RAG few-shot) → MCP executes via `execute_code` → reactive replan after each code. Film a full pick-and-place.
+  - *Tag*: `hardware`
+
+---
+
+## Phase 7 — Rotation, JEPA, Memory (FUTURE)
+
+- [ ] Extend deltas to (dx, dy, dz, dθ); retrain VQ-VAE + policy with 4D action space
+- [ ] JEPA enters: encode (delta_sequence, latent_state_transition) pairs so vocabulary is grounded in what the world does, not just what the robot does
+- [ ] Persistent memory across sessions (what worked, what failed, object locations)
+- [ ] Error recovery loop (grasp failed → re-observe → retry with adjustment)
+- [ ] Optional: fine-tune LLM on accumulated (task, scene, code_sequence) data if RAG hits a ceiling
 
 ---
 
