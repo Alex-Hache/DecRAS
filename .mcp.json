@@ -7,7 +7,8 @@
       "env": {
         "SIMULATE": "false",
         "LEROBOT_FOLLOWER_PORT": "/dev/decras_follower",
-        "DECRAS_CAMERA": "192.168.129.1:8080"
+        "DECRAS_CAMERA": "192.168.129.1:8080",
+        "DECRAS_SERVO_P_GAIN": "28"
       }
     }
   }
