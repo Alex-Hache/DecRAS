@@ -107,19 +107,22 @@
 
 ### 6B.2 LLM loop end-to-end
 
-- [ ] **Test LLM loop with real hardware + camera** — Run `llm_controller/main.py` with the real arm and phone camera. Give it a simple task ("pick up the stick"). Observe what it tries to do. Record the full interaction log.
-  - *Done when*: LLM produces tool calls, arm moves, you have an interaction log to analyze
-  - *Time*: 30 min
-  - *Tag*: `hardware`
+- [x] **Test LLM loop with real hardware + camera** — DONE (2026-05-18): full pick-and-place sequence executed. Arm moved correctly; perception was broken (CAMERA_TO_ROBOT_MATRIX=None → x=0.70m out-of-workspace). See EXPERIMENT_REPORT_2026_05_18.md.
 
-- [ ] **Analyze failure modes** — The LLM will almost certainly fail. Document *how* it fails: wrong tool sequence? wrong distances? doesn't understand scene graph? This analysis drives what to build next.
-  - *Done when*: Written analysis of failure modes (append to DECISIONS.md)
-  - *Time*: 15 min
+- [x] **Analyze failure modes** — DONE (2026-05-18): root causes documented in EXPERIMENT_REPORT_2026_05_18.md. Failures: (1) uncalibrated camera transform, (2) no image in observe(), (3) false-positive grasp signal.
+
+- [x] **Fix: expose camera image in observe()** — DONE (2026-05-18): observe() now returns [JSON, Image(jpeg)] so LLM can visually verify scene. Also fixed env propagation to MCP subprocess (SIMULATE etc. were being stripped by MCP's default env).
+
+- [x] **Fix: few-shot example + move_to_delta in prompt** — DONE (2026-05-18): prompt.py updated with coordinate frame hints, move_to_delta (not move_to), and annotated sticks_v3 pick-and-place few-shot.
 
 ### 6B.3 First RAG experiment (if Test Zero passed)
 
-- [ ] **Inject demo sequence into LLM prompt** — Take a successful segmenter v2 sequence, hardcode it as a few-shot example in `llm_controller/prompt.py`. Re-run the LLM loop on the same task. Does the example help?
-  - *Done when*: Comparison: LLM output with vs without the demo example
+- [ ] **Camera calibration** — Run `calibrate` MCP tool to compute CAMERA_TO_ROBOT_MATRIX. Hard prerequisite for any perception-based pick-and-place. Without it, object positions from observe() are noise.
+  - *Done when*: CAMERA_TO_ROBOT_MATRIX is non-None in config.py, a re-run of observe() returns object x < 0.40m
+  - *Time*: 30 min
+
+- [ ] **Re-run pick-and-place with image in observe()** — With camera image visible, Claude can catch broken coordinates. Run the experiment again.
+  - *Done when*: Arm physically touches the stick, or LLM correctly identifies and reports coordinate issues
   - *Time*: 30 min
 
 ---
