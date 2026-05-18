@@ -229,11 +229,12 @@ def end_episode(success: bool = False, reason: str = "") -> str:
 @mcp.tool()
 @_safe_tool
 def observe():
-    """Capture camera frame, run perception, return scene graph JSON + camera image.
+    """Capture camera frame and return gripper state + live image.
 
-    Returns the scene graph as JSON text and (when a camera is available) the
-    camera frame as a JPEG image so the LLM can see the scene directly and
-    catch broken object coordinates before acting on them.
+    Returns EE position, gripper state as JSON, plus a JPEG camera frame when
+    the camera is available. Use the image for spatial reasoning — estimate the
+    gripper-to-object offset visually and issue small corrective move_to_delta
+    steps. No pixel-to-robot coordinate transform is applied.
     """
     t0 = time.time()
 
@@ -243,22 +244,19 @@ def observe():
         return json.dumps(result)
 
     elif _get_camera() is not None:
-        from mcp_server.perception.detector import detect_objects
-        from mcp_server.perception.scene_graph import build_scene_graph
         from mcp.server.fastmcp import Image
 
         r = _get_robot()
         frame = _get_camera().capture()
-        detections = detect_objects(frame)
-        result = build_scene_graph(
-            detections,
-            gripper_position=r.get_ee_position(),
-            gripper_open=r.gripper_open,
-            holding=r.holding,
-        )
+        result = {
+            "ee_position": r.get_ee_position(),
+            "gripper_open": r.gripper_open,
+            "holding": r.holding,
+            "timestamp": round(time.time(), 2),
+        }
         _log_tool("observe", {}, {"status": "observed"}, t0)
 
-        # Encode frame as JPEG for vision — resize to 640×480 to keep tokens reasonable
+        # Encode frame as JPEG — LLM uses image for spatial reasoning, not pixel coords
         try:
             import cv2
             small = cv2.resize(frame, (640, 480))

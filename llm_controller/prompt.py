@@ -24,49 +24,63 @@ COORDINATE FRAME:
   +X = forward (0–0.40 m from base)
   +Y = left    (-0.20 to +0.20 m)
   +Z = up      (0–0.30 m)
-  Typical move per step: 2–12 cm (0.02–0.12 m) per axis.
-  Objects on the table: z ≈ 0.03–0.08 m.
+  Typical move per step: 2–8 cm (0.02–0.08 m) per axis.
+  Table surface: z ≈ 0.00–0.02 m. Grasp height: z ≈ 0.01–0.03 m.
 
 AVAILABLE ACTIONS:
-  observe()                              → get gripper position + detected objects
-  move_to_delta(dx, dy, dz)             → move relative to current position (meters)
-  grasp(force=3.0)                       → close gripper (force 1–10)
-  release()                              → open gripper
-  get_status()                           → read joint positions and robot state
-  stop()                                 → emergency stop
+  observe()                   → returns gripper EE position (meters) + camera image
+  move_to_delta(dx, dy, dz)  → move relative to current EE position (meters)
+  grasp(force=3.0)            → close gripper (force 1–10)
+  release()                   → open gripper
+  get_status()                → read joint positions and robot state
+  stop()                      → emergency stop
+
+SPATIAL REASONING:
+  observe() returns a camera image — use it as your primary source of spatial truth.
+  The JSON only gives your EE position; object positions are NOT provided.
+  Estimate the offset from your gripper to the target by looking at the image:
+    - Is the object to your left or right? → adjust dy (left=positive, right=negative)
+    - Is the object further or closer? → adjust dx (forward=positive)
+    - Is the gripper above the table? → adjust dz (down=negative)
+  Move in small steps (2–5 cm), re-observe after each move to verify progress.
 
 RULES:
-  - Call observe() first to get current gripper position.
-  - Use dx/dy/dz to express how far to move — NOT absolute coordinates.
+  - Always call observe() first to see the scene.
   - One action per turn. After each action you receive the result.
-  - Think step by step, keep reasoning to 1–2 sentences.
-  - When the task is complete, respond with DONE.
+  - Keep reasoning to 1–2 sentences.
+  - Stop and say DONE when the task is complete.
+  - If you cannot see the target object in the image, say so and stop.
 
-PICK-AND-PLACE STRUCTURE (reference from a real recorded demo):
+PICK-AND-PLACE APPROACH (visual servoing):
 
-  Task: pick up the yellow glue stick (~30 cm forward) and move it left.
-  Gripper starts at: [0.19, 0.05, 0.11]
-  Object detected at: yellow_stick, pos=[0.31, 0.00, 0.02]
+  Task: pick up the yellow glue stick and move it left.
 
-  Step 1 — move above the stick (it's ~12 cm forward, 5 cm right of gripper):
-    move_to_delta(dx=0.12, dy=-0.05, dz=-0.03)
+  Step 1 — observe: see image. Gripper at [0.19, 0.05, 0.11].
+           Stick is visible ~10 cm forward and slightly right of gripper.
+    observe()
 
-  Step 2 — descend to grasp height (table level ≈ z=0.02):
-    move_to_delta(dx=0.0, dy=0.0, dz=-0.07)
+  Step 2 — approach above stick (estimate from image):
+    move_to_delta(dx=0.10, dy=-0.03, dz=-0.05)
 
-  Step 3 — grasp:
+  Step 3 — re-observe: verify gripper is now above/near stick. Adjust if needed.
+    observe()
+
+  Step 4 — descend to grasp height (table ≈ z=0.02):
+    move_to_delta(dx=0.0, dy=0.0, dz=-0.05)
+
+  Step 5 — grasp:
     grasp(force=3.0)
 
-  Step 4 — lift clear of the table:
+  Step 6 — lift clear:
     move_to_delta(dx=0.0, dy=0.0, dz=0.08)
 
-  Step 5 — carry to target location (left 15 cm):
+  Step 7 — carry left:
     move_to_delta(dx=0.0, dy=0.15, dz=0.0)
 
-  Step 6 — release:
+  Step 8 — release:
     release()
 
-  Step 7 — retreat:
+  Step 9 — retreat:
     move_to_delta(dx=-0.05, dy=0.0, dz=0.05)
 
 RESPONSE FORMAT:
@@ -226,30 +240,31 @@ def _summarize_scene(scene: dict | None) -> str:
     if not scene:
         return "No scene data."
 
-    # Hardware observe() without camera: ee_position + joints
-    if "joints" in scene and "objects" not in scene:
-        ee = scene.get("ee_position", [])
-        open_str = "open" if scene.get("gripper_open") else "closed"
-        ee_str = f"[{', '.join(f'{v:.3f}' for v in ee)}]" if ee else "unknown"
-        return f"Gripper EE position: {ee_str} m\nGripper state: {open_str}\n(No camera — use EE position for delta planning)"
-
-    parts = []
-    for obj in scene.get("objects", []):
-        pos = obj["position"]
-        status = "grasped" if obj.get("grasped") else "on table"
-        parts.append(
-            f"  {obj['id']} ({obj['type']}, {obj['color']}): "
-            f"pos={pos}, {status}, graspable={obj.get('graspable')}"
+    # Sim environment path (has "objects" key)
+    if "objects" in scene:
+        parts = []
+        for obj in scene.get("objects", []):
+            pos = obj["position"]
+            status = "grasped" if obj.get("grasped") else "on table"
+            parts.append(
+                f"  {obj['id']} ({obj['type']}, {obj['color']}): "
+                f"pos={pos}, {status}, graspable={obj.get('graspable')}"
+            )
+        gripper = scene.get("gripper", {})
+        g_pos = gripper.get("position", [])
+        g_state = "open" if gripper.get("open") else "closed"
+        g_holding = gripper.get("holding") or "nothing"
+        g_pos_str = f"[{', '.join(f'{v:.3f}' for v in g_pos)}]" if g_pos else str(g_pos)
+        objects_text = "\n".join(parts) if parts else "  (none)"
+        return (
+            f"Gripper EE position: {g_pos_str} m  |  {g_state}  |  holding={g_holding}\n"
+            f"Objects:\n{objects_text}"
         )
 
-    gripper = scene.get("gripper", {})
-    g_pos = gripper.get("position", [])
-    g_state = "open" if gripper.get("open") else "closed"
-    g_holding = gripper.get("holding") or "nothing"
-
-    g_pos_str = f"[{', '.join(f'{v:.3f}' for v in g_pos)}]" if g_pos else str(g_pos)
-    objects_text = "\n".join(parts) if parts else "  (none detected — color detector not tuned for this object)"
-    return (
-        f"Gripper EE position: {g_pos_str} m  |  {g_state}  |  holding={g_holding}\n"
-        f"Objects:\n{objects_text}"
-    )
+    # Hardware path (camera or no camera) — EE position only, image carries spatial info
+    ee = scene.get("ee_position", [])
+    open_str = "open" if scene.get("gripper_open") else "closed"
+    holding = scene.get("holding") or "nothing"
+    ee_str = f"[{', '.join(f'{v:.3f}' for v in ee)}]" if ee else "unknown"
+    no_cam = "  (no camera — use EE position for delta planning)" if scene.get("camera") == "not_available" else ""
+    return f"Gripper EE position: {ee_str} m  |  {open_str}  |  holding={holding}{no_cam}"
