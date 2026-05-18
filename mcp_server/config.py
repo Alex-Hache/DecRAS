@@ -64,3 +64,23 @@ LEROBOT_FOLLOWER_ID = os.environ.get("LEROBOT_FOLLOWER_ID", "decras_follower")
 
 # Simulated mode (no real hardware)
 SIMULATE = os.environ.get("SIMULATE", "true").lower() == "true"
+
+# Servo P gain (Feetech STS-3215 internal position PID).
+# LeRobot default is 32; SO101Follower.configure() lowers it to 16 to reduce shakiness.
+# Higher P → less gravity droop (Δq = τ_gravity / Kp_eff) but risks oscillation.
+# Sweep empirically: try 16 → 24 → 32 with move_to_delta(0,0,0.05) Z-up test.
+# Set via env var DECRAS_SERVO_P_GAIN; 0 = use LeRobot default (don't override).
+SERVO_P_GAIN: int = int(os.environ.get("DECRAS_SERVO_P_GAIN", "0"))
+
+# Per-joint servo compliance (deg / N·m).
+# Fitted from notebooks/gravity_calibration.ipynb.
+# Formula: q_ref[joint] += COMPLIANCE[joint] * τ_gravity[joint]
+# where τ_gravity comes from kinematics.gravity_torques_dict().
+# Zero = no correction (safe default until calibrated).
+SERVO_COMPLIANCE_DEG_PER_NM: dict[str, float] = {
+    "shoulder_pan":  0.0,
+    "shoulder_lift": 0.0,  # fill after running gravity_calibration.ipynb
+    "elbow_flex":    0.0,  # fill after running gravity_calibration.ipynb
+    "wrist_flex":    0.0,
+    "wrist_roll":    0.0,
+}

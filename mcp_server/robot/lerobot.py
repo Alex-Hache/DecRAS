@@ -4,9 +4,12 @@ Wraps the lerobot v0.4+ SDK to control the SO-101 follower arm.
 Joint-level control with Cartesian IK via kinematics module.
 """
 
+import os
 import time
 import logging
-from mcp_server.config import SIMULATE, WORKSPACE, FORCE_LIMIT
+from mcp_server.config import SIMULATE, WORKSPACE, FORCE_LIMIT, SERVO_P_GAIN, SERVO_COMPLIANCE_DEG_PER_NM
+
+_LOG_GRAVITY = os.environ.get("LOG_GRAVITY_ERRORS", "").lower() in ("1", "true", "yes")
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +78,7 @@ class LeRobotInterface:
                 self._robot.connect(calibrate=True)
                 self._is_connected = True
                 logger.info("Connected to SO-101 follower on %s", port)
+                self._apply_p_gain()
                 break
             except Exception as e:
                 logger.warning("Connect attempt %d/%d failed: %s", attempt, max_attempts, e)
@@ -88,6 +92,18 @@ class LeRobotInterface:
                     self._robot = make_robot_from_config(config)
                 else:
                     raise
+
+    def _apply_p_gain(self) -> None:
+        """Override servo P gain if SERVO_P_GAIN != 0 (0 = use LeRobot default of 16)."""
+        if SERVO_P_GAIN == 0 or self._robot is None:
+            return
+        try:
+            with self._robot.bus.torque_disabled():
+                for motor in self._robot.bus.motors:
+                    self._robot.bus.write("P_Coefficient", motor, SERVO_P_GAIN)
+            logger.info("Servo P gain set to %d for all joints", SERVO_P_GAIN)
+        except Exception as e:
+            logger.warning("Could not set P gain: %s", e)
 
     def _detect_port(self) -> str:
         """Auto-detect the serial port for the follower arm."""
@@ -340,19 +356,54 @@ class LeRobotInterface:
                 ik_plan.append(ik)
                 seed = {k: v for k, v in ik.items() if k not in ("gripper",)}
 
+            # 4b. Gravity pre-correction: offset each joint reference so the servo droops
+            #     to the IK target rather than below it.
+            #     q_ref = q_desired + COMPLIANCE * τ_gravity(q_desired)
+            #     COMPLIANCE constants (deg/N·m) are zero until fitted in
+            #     notebooks/gravity_calibration.ipynb.
+            _has_compliance = any(v != 0.0 for v in SERVO_COMPLIANCE_DEG_PER_NM.values())
+            if _has_compliance:
+                from mcp_server.robot.kinematics import gravity_torques_dict
+                for ik in ik_plan:
+                    τ = gravity_torques_dict({k: v for k, v in ik.items() if k != "gripper"})
+                    for joint, α in SERVO_COMPLIANCE_DEG_PER_NM.items():
+                        if α != 0.0 and joint in ik:
+                            ik[joint] += α * τ.get(joint, 0.0)
+
             # 5. Execute: send each waypoint, wait for convergence
             max_wait = {"slow": 1.0, "normal": 0.5, "fast": 0.25}.get(velocity, 0.5)
-            for ik in ik_plan:
+            waypoint_errors: list[dict] = []
+            for step_i, ik in enumerate(ik_plan):
                 self._wait_until_settled(ik, max_wait_s=max_wait)
+                if _LOG_GRAVITY:
+                    from mcp_server.robot.kinematics import gravity_torques_dict
+                    actual = self.get_joint_positions()
+                    τ = gravity_torques_dict({k: v for k, v in ik.items() if k != "gripper"})
+                    waypoint_errors.append({
+                        "step": step_i,
+                        "q_desired": {k: round(v, 3) for k, v in ik.items()},
+                        "q_actual": {k: round(actual.get(k, 0.0), 3) for k in ik},
+                        "tau_grav": {k: round(v, 5) for k, v in τ.items()},
+                    })
 
             # 6. Active-hold the final pose against gravity droop
-            self._active_hold(ik_plan[-1], duration_s=0.6)
+            hold_target = dict(ik_plan[-1])
+            if _has_compliance:
+                from mcp_server.robot.kinematics import gravity_torques_dict
+                τ = gravity_torques_dict({k: v for k, v in hold_target.items() if k != "gripper"})
+                for joint, α in SERVO_COMPLIANCE_DEG_PER_NM.items():
+                    if α != 0.0 and joint in hold_target:
+                        hold_target[joint] += α * τ.get(joint, 0.0)
+            self._active_hold(hold_target, duration_s=0.6)
 
             ee_final = self.get_ee_position()
             self._position = list(ee_final)
             self._last_action = "move_cartesian_delta"
             self._last_status = "complete"
-            return {"status": "complete", "ee_position": ee_final}
+            result: dict = {"status": "complete", "ee_position": ee_final}
+            if waypoint_errors:
+                result["waypoint_errors"] = waypoint_errors
+            return result
         except Exception as e:
             self._last_action = "move_cartesian_delta"
             self._last_status = "failed"

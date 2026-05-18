@@ -123,3 +123,28 @@ def cartesian_to_joints(
 
     # Read solved joints and convert back to hardware degrees
     return {jn: _urdf_to_hw_deg(jn, float(np.rad2deg(_robot.get_joint(jn)))) for jn in JOINT_NAMES_ARM}
+
+
+def gravity_torques_dict(hw_joints: dict[str, float]) -> dict[str, float]:
+    """Static gravity compensation torques (N·m) at a given joint configuration.
+
+    Returns the torque each joint actuator must produce to hold the arm
+    statically against gravity. Positive = hold in positive joint direction;
+    negative = hold in negative direction.
+
+    These are the values returned by placo's static_gravity_compensation_torques_dict.
+    They depend on the full arm geometry — the sign can change across the workspace.
+
+    Use: after empirical calibration, pre-correct IK targets with
+        q_ref[joint] += SERVO_COMPLIANCE[joint] * gravity_torques_dict(q_desired)[joint]
+    to reduce gravity droop. Compliance constants are fitted in
+    notebooks/gravity_calibration.ipynb.
+    """
+    import math as _math
+    _init()
+    assert _robot is not None
+    hw = _normalize_joint_dict(hw_joints)
+    for jn in JOINT_NAMES_ARM:
+        _robot.set_joint(jn, _math.radians(_hw_to_urdf_deg(jn, hw.get(jn, 0.0))))
+    _robot.update_kinematics()
+    return _robot.static_gravity_compensation_torques_dict("base_link")
