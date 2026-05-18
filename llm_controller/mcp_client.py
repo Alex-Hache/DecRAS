@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -18,9 +19,12 @@ class MCPClient:
         self._session_context = None
 
     async def connect(self):
+        # Pass full environment so SIMULATE, LEROBOT_FOLLOWER_PORT, etc. reach the server.
+        # MCP's get_default_environment() only passes HOME/PATH/USER — too minimal.
         server_params = StdioServerParameters(
             command=MCP_SERVER_CMD[0],
             args=MCP_SERVER_CMD[1:],
+            env=dict(os.environ),
         )
         self._stdio_context = stdio_client(server_params)
         read_stream, write_stream = await self._stdio_context.__aenter__()

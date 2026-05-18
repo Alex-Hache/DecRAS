@@ -13,6 +13,7 @@ dependencies = [
     "pybullet",
     "placo",
     "matplotlib>=3.10.8",
+    "anthropic>=0.102.0",
 ]
 
 [project.optional-dependencies]

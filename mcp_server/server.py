@@ -228,37 +228,60 @@ def end_episode(success: bool = False, reason: str = "") -> str:
 
 @mcp.tool()
 @_safe_tool
-def observe() -> str:
-    """Capture camera frame, run perception, return scene graph JSON."""
+def observe():
+    """Capture camera frame, run perception, return scene graph JSON + camera image.
+
+    Returns the scene graph as JSON text and (when a camera is available) the
+    camera frame as a JPEG image so the LLM can see the scene directly and
+    catch broken object coordinates before acting on them.
+    """
     t0 = time.time()
 
     if env is not None:
         result = _get_scene_dict()
+        _log_tool("observe", {}, {"status": "observed"}, t0)
+        return json.dumps(result)
+
     elif _get_camera() is not None:
         from mcp_server.perception.detector import detect_objects
         from mcp_server.perception.scene_graph import build_scene_graph
+        from mcp.server.fastmcp import Image
+
         r = _get_robot()
         frame = _get_camera().capture()
         detections = detect_objects(frame)
         result = build_scene_graph(
             detections,
-            gripper_position=r.get_ee_position(),  # fresh FK, not stale cache
+            gripper_position=r.get_ee_position(),
             gripper_open=r.gripper_open,
             holding=r.holding,
         )
+        _log_tool("observe", {}, {"status": "observed"}, t0)
+
+        # Encode frame as JPEG for vision — resize to 640×480 to keep tokens reasonable
+        try:
+            import cv2
+            small = cv2.resize(frame, (640, 480))
+            ok, buf = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            if ok:
+                return [json.dumps(result), Image(data=bytes(buf), format="jpeg")]
+        except Exception as e:
+            logger.warning("Could not encode camera frame: %s", e)
+
+        return json.dumps(result)
+
     else:
         r = _get_robot()
         result = {
-            "ee_position": r.get_ee_position(),    # fresh FK
+            "ee_position": r.get_ee_position(),
             "joints": r.get_joint_positions(),
             "gripper_open": r.gripper_open,
             "holding": r.holding,
             "camera": "not_available",
             "timestamp": round(time.time(), 2),
         }
-
-    _log_tool("observe", {}, {"status": "observed"}, t0)
-    return json.dumps(result)
+        _log_tool("observe", {}, {"status": "observed"}, t0)
+        return json.dumps(result)
 
 
 @mcp.tool()
