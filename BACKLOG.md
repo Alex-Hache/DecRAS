@@ -115,15 +115,17 @@
 
 - [x] **Fix: few-shot example + move_to_delta in prompt** — DONE (2026-05-18): prompt.py updated with coordinate frame hints, move_to_delta (not move_to), and annotated sticks_v3 pick-and-place few-shot.
 
-### 6B.3 First RAG experiment (if Test Zero passed)
+### 6B.3 — SUPERSEDED
 
-- [ ] **Camera calibration** — Run `calibrate` MCP tool to compute CAMERA_TO_ROBOT_MATRIX. Hard prerequisite for any perception-based pick-and-place. Without it, object positions from observe() are noise.
-  - *Done when*: CAMERA_TO_ROBOT_MATRIX is non-None in config.py, a re-run of observe() returns object x < 0.40m
-  - *Time*: 30 min
+Camera calibration and visual servoing are dropped. Second experiment (2026-05-18) confirmed:
+camera is body-fixed → image doesn't change as EE moves → visual servoing is impossible without
+calibration, and calibration contradicts the architecture goal (no fixed camera dependency).
 
-- [ ] **Re-run pick-and-place with image in observe()** — With camera image visible, Claude can catch broken coordinates. Run the experiment again.
-  - *Done when*: Arm physically touches the stick, or LLM correctly identifies and reports coordinate issues
-  - *Time*: 30 min
+**Decision**: pixel-to-robot transform removed from observe(). Camera serves semantic grounding
+only (did the scene change?), not metric navigation. See DECISIONS.md 2026-05-18.
+
+**Next**: Phase 6D — collect 30+ teleop demos. The LLM reactive loop returns in Phase 6F
+over a *learned* vocabulary, not over raw move_to_delta coordinates.
 
 ---
 

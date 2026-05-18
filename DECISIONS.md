@@ -160,3 +160,29 @@ See BACKLOG.md Phase 6A and 6B for task breakdown.
 **Open research question**: Is there a middle ground between a static heuristic segmenter and a full Path A embedding pipeline? A learned segmenter (small transformer or even an LLM prompted with trajectory data) could be that middle ground — more adaptive than heuristics, less infrastructure than full embedding discovery. This is worth exploring but is a separate research axis.
 
 **Key insight**: The architecture's value proposition (LLM reasons, primitives execute) only holds if there exists a faithful mapping between continuous trajectories and discrete primitive sequences. The segmenter *is* that mapping. If it's lossy, the entire decoupled approach needs rethinking.
+
+---
+
+## 2026-05-18 — Camera Role: Semantic Grounding Only, No Metric Navigation
+
+**Context**: Two pick-and-place experiments run with Claude Code as the LLM controller. Both failed to grasp the yellow glue stick. Full report in `EXPERIMENT_REPORT_2026_05_18.md`.
+
+**Experiment 1 failure**: `CAMERA_TO_ROBOT_MATRIX = None` → `pixel_to_robot()` fallback produced coordinates outside the workspace (x=0.70m for a stick at ~30cm). LLM invented a wrong scale factor instead of stopping. Arm moved but never reached the stick.
+
+**Experiment 2 failure**: After removing pixel coordinates from `observe()` and exposing the raw camera image, a second experiment attempted visual servoing. Finding: the phone camera is mounted on a tripod above the robot body — it is body-fixed, not EE-fixed. The image did not change as the EE moved across a 30cm range. The LLM (Claude) correctly diagnosed this and reported it.
+
+**Decision**: Camera-to-robot metric calibration is **not part of this architecture**. Reasons:
+1. Calibration ties the system to a fixed camera pose — contradicts the goal of a mobile, reconfigurable setup.
+2. The target architecture (EMERGENT_ROBOTICS_PLAN.md Phase 4) uses the camera for *semantic* grounding: before/after images let the LLM name discovered codes ("code 3 causes the stick to disappear from the table → grasp"). No pixel-to-robot transform needed.
+3. Visual servoing requires either an EE-mounted camera or a calibrated fixed camera. We have neither and don't want either.
+
+**Changes made**:
+- `observe()` on hardware no longer runs `detect_objects` / `build_scene_graph`. Returns EE position + raw JPEG only.
+- `pixel_to_robot()` and `build_scene_graph()` retained in `perception/` for sim environment use, but not called on hardware path.
+- `prompt.py` updated: LLM told to use image for spatial reasoning, no object coordinates provided.
+- `CAMERA_TO_ROBOT_MATRIX` left as `None` permanently — not a bug, by design.
+
+**Camera's actual role going forward**:
+- Phase 6D (data collection): record frames at 5Hz alongside delta sequences for future JEPA training.
+- Phase 6F (LLM grounding): before/after frames let LLM verify code outcomes and name behaviors.
+- Real-time navigation: not the camera's job. The conditioned policy (Phase 6E) handles this from state alone.

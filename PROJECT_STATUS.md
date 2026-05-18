@@ -7,7 +7,7 @@ The core thesis: split reasoning (LLM) from execution (MCP primitives) from perc
 
 **Stack**: Claude/Ollama (reasoning) + MCP server (motor primitives) + LeRobot SDK (SO-101 hardware) + PyBullet (simulation)
 
-## Current State (April 2026)
+## Current State (May 2026)
 
 ### Working
 
@@ -99,7 +99,7 @@ datasets/
 - **`move_cartesian_delta` rewritten (April 2026)** — was reading mid-motion `get_observation()` between sub-steps and using a fast inner interpolation (200ms) the servo couldn't track. Both bugs caused 30-50% reach. New implementation plans waypoints upfront from FK seed, chains IK seeds, uses convergence-based wait + active-hold. Reach now 80-95% on horizontal/down moves.
 - **Gravity sag — the real blocker for replay fidelity** — Extended-arm segments (especially post-release retreat) drift significantly due to servo torque insufficient to hold the arm against gravity. Causes ~2-5cm position error accumulating across 19-49 primitives. Z-up moves reach only 25-50% of commanded distance. Gravity compensation (empirical Z overshoot or feed-forward torque) is the next hardware task before Phase 6D recording.
 - **Gripper recording fidelity** — sticks_v3 gripper range is 0.7-17.1/100 (barely moves). Meaningful dgripper replay requires recordings with deliberate full open/close cycles. Record 6D demos with exaggerated gripper motion.
-- Camera pipeline live-tested with IP Webcam on phone (April 2026): 1920×1080 frames from `http://192.168.129.1:8080/video`. Detector runs end-to-end. Real-scene detector tuning (HSV ranges for actual lab objects, not demo red cup / blue plate) not yet done.
+- Camera is body-fixed (phone on tripod at shoulder height) — image does not change as EE moves. Visual servoing is impossible without an EE-mounted camera or a calibrated fixed camera. `observe()` now returns EE position + raw image only; pixel-to-robot transform removed. Camera is useful for semantic scene grounding (did something change?) but not for metric navigation.
 - Servo convergence under gravity load requires active hold loops (repeated send_joint_positions)
 - Only 2 ports: follower on `/dev/ttyACM0`, leader on `/dev/ttyACM1`
 
@@ -176,18 +176,19 @@ All 8 motion primitives hardware-validated (March 2026):
 - **Segmenter param overrides** — DONE: `--angle`, `--dip`, `--min-dist` CLI flags for fine-grained density beyond low/medium/high presets; custom sequences named `episode_NNN_aA_dD_mM.json`
 - **`scripts/replay_sequence.py`** — DONE: reads first-frame joints from Parquet for correct start position, replays sequence via `LeRobotInterface` directly (`SIMULATE=false` baked in), supports `--density` and `--seq` for custom files
 
-**Phase 6B — Full Loop (NEXT)**:
-- ~~Camera setup (IP Webcam on phone) + wire into perception pipeline~~ — DONE (phone MJPEG stream, `DECRAS_CAMERA` env var, live-tested)
-- LLM observe-think-act loop end-to-end on real hardware
-- Analyze LLM failure modes
-- First RAG experiment: inject demo sequence as few-shot example
+**Phase 6B — Full Loop (DONE — key lessons learned 2026-05-18)**:
+- ~~Camera setup (IP Webcam on phone) + wire into perception pipeline~~ — DONE
+- ~~LLM observe-think-act loop end-to-end on real hardware~~ — DONE: two experiments run; arm moves correctly, perception was the blocker (see DECISIONS.md 2026-05-18)
+- ~~Analyze LLM failure modes~~ — DONE: see `EXPERIMENT_REPORT_2026_05_18.md`
+- **Gravity compensation** — DONE: P-gain sweep (P=16→70%, P=24→88%, P=28→92% reach); P=28 set permanently in `.mcp.json`; `gravity_torques_dict()` added to `kinematics.py`; `SERVO_COMPLIANCE_DEG_PER_NM` in `config.py` (all zeros = no-op, for future model-based correction)
+- **Visual servoing pivot** — DONE: `observe()` no longer runs `detect_objects`/`build_scene_graph` on hardware; returns EE position + raw JPEG only; LLM navigates from image, no pixel-to-robot transform needed (architecture-aligned, camera-position-agnostic)
 
 **Phase 6C — Demo Store (DONE, retriever/RAG superseded)**:
 - ~~Demo store schema~~ — DONE (retrieval.py dataclasses)
 - ~~Demo store writer~~ — DONE (`decras.imitation.store`, CLI at `scripts/add_demo.py`, `demos/` at project root)
 - Retriever / RAG / fine-tuning items moved to Phase 6F (over discovered codes, not raw `move_to_delta` sequences). See `EMERGENT_ROBOTICS_PLAN.md` and ARCHITECTURE.md decisions #8 and #9.
 
-**Phase 6D — Data Collection for Vocabulary Discovery (NEXT)**:
+**Phase 6D — Data Collection for Vocabulary Discovery (NEXT — current priority)**:
 - Recorder upgrades: gripper force (or skip), camera frames at 5Hz wired into Parquet
 - 30+ teleop demos across 2-3 task types with deliberately varied starting positions
 - **Gate**: Test Zero (6A.3) must pass first — delta replay reliability is a prerequisite for the conditioned policy in 6E
