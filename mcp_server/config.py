@@ -2,6 +2,13 @@ import os
 
 # Object definitions for color detection
 OBJECTS = {
+    "yellow_stick": {
+        "hsv_lower": [18, 100, 100],
+        "hsv_upper": [35, 255, 255],
+        "height": 0.02,   # UHU glue stick lying flat ≈ 2cm diameter
+        "graspable": True,
+        "type": "stick",
+    },
     "red_cup": {
         "hsv_lower": [0, 120, 70],
         "hsv_upper": [10, 255, 255],

@@ -242,13 +242,14 @@ def observe() -> str:
         detections = detect_objects(frame)
         result = build_scene_graph(
             detections,
-            gripper_position=r.position,
+            gripper_position=r.get_ee_position(),  # fresh FK, not stale cache
             gripper_open=r.gripper_open,
             holding=r.holding,
         )
     else:
         r = _get_robot()
         result = {
+            "ee_position": r.get_ee_position(),    # fresh FK
             "joints": r.get_joint_positions(),
             "gripper_open": r.gripper_open,
             "holding": r.holding,
